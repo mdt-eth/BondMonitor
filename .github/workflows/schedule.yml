@@ -2,7 +2,8 @@ name: Aggiorna Pagina Web Bond
 
 on:
   schedule:
-    - cron: '0 18 * * 1'
+    # Gira alle 18:00 UTC (20:00 ora svizzera estiva) dal Lunedì (1) al Venerdì (5)
+    - cron: '0 18 * * 1-5'
   workflow_dispatch:
 
 jobs:
@@ -20,7 +21,7 @@ jobs:
           python-version: '3.11'
 
       - name: Installa dipendenze
-        run: pip install -r requirements.txt
+        run: pip install requests
 
       - name: Esegui Script e Genera HTML
         env:
@@ -30,5 +31,6 @@ jobs:
       - name: Salva la pagina aggiornata
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Aggiornamento automatico bond dashboard"
-          file_pattern: "index.html"
+          commit_message: "Aggiornamento giornaliero bond dashboard"
+          # Ora salva sia la pagina web che il file di memoria
+          file_pattern: "index.html previous_data.json"
