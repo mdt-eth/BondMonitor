@@ -36,7 +36,7 @@ def save_memory(current_data):
 def get_bond_quote(isin, fallback_p, fallback_y):
     url = f"https://api.boerse-frankfurt.de/v1/data/quote_box/bond?isin={isin}"
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Accept": "application/json",
         "Origin": "https://www.boerse-frankfurt.de",
         "Referer": f"https://www.boerse-frankfurt.de/anleihe/{isin.lower()}"
@@ -57,7 +57,7 @@ def get_bond_quote(isin, fallback_p, fallback_y):
 
 def generate_outlook(data_summary):
     if not GEMINI_API_KEY:
-        return "<p>⚠️ API Key mancante.</p>"
+        return "<p>⚠️ API Key mancante nei Secrets.</p>"
 
     prompt = f"""
     Sei un consulente finanziario per un investitore svizzero.
@@ -74,58 +74,57 @@ def generate_outlook(data_summary):
     </div>
     <div class="insight-box" style="margin-top: 15px; border-left-color: #28a745;">
         <h3 style="margin-top:0;">🔄 Cosa è cambiato (Variazioni Giornaliere)</h3>
-        <p>[Tuo commento descrittivo che analizza le variazioni di prezzo e rendimento rispetto ai dati 'Prec' forniti. Se non ci sono dati precedenti (N/D), dai il benvenuto al primo avvio del monitoraggio]</p>
+        <p>[Tuo commento descrittivo sulle variazioni di prezzo. Se prec è N/D, dai il benvenuto al primo avvio]</p>
     </div>
     """
     
     url = f"[https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=](https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=){GEMINI_API_KEY}"
     try:
         res = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, headers={"Content-Type": "application/json"}, timeout=20)
+        
         if res.status_code == 200:
-            text = res.json()["candidates"][0]["content"]["parts"][0]["text"]
-            # Pulizia per evitare che Gemini aggiunga blocchi markdown
-            return text.replace("```html", "").replace("```", "").strip()
+            data = res.json()
+            if "candidates" in data and len(data["candidates"]) > 0:
+                text = data["candidates"][0]["content"]["parts"][0]["text"]
+                return text.replace("```html", "").replace("```", "").strip()
+            else:
+                return f"<p style='color:red;'>⚠️ Risposta bloccata o vuota. Gemini JSON: {str(data)}</p>"
+        else:
+            print(f"Errore HTTP {res.status_code}: {res.text}")
+            return f"<p style='color:red;'>⚠️ Errore API: Codice {res.status_code}. Motivo: {res.text}</p>"
+            
     except Exception as e:
-        print(f"Errore API: {e}")
-    return "<p>Errore di generazione insight.</p>"
+        print(f"Errore di sistema: {e}")
+        return f"<p style='color:red;'>⚠️ Errore di sistema durante la generazione: {e}</p>"
 
 def main():
     date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
-    
-    # Memoria: Leggi vecchi dati e prepara i nuovi
     previous_memory = load_memory()
     current_memory = {}
-    
     table_rows, data_for_llm = "", []
 
     for b in WATCHLIST:
         q = get_bond_quote(b["isin"], b["fallback_price"], b["fallback_ytm"])
         current_memory[b["isin"]] = {"price": q["price"], "ytm": q["ytm"]}
         
-        # Gestione valori correnti
         price_disp = f"{q['price']:.2f}" if isinstance(q["price"], (int, float)) else q["price"]
         ytm_disp = f"{q['ytm']:.2f}%" if isinstance(q["ytm"], (int, float)) else f"{q['ytm']}"
         
-        # Gestione valori storici
         prev_data = previous_memory.get(b["isin"], {})
         prev_price = prev_data.get("price", "N/D")
         prev_price_disp = f"{prev_price:.2f}" if isinstance(prev_price, (int, float)) else prev_price
         
-        # Evidenza del trend in tabella (freccia su/giù se il prezzo è numerico)
         trend_arrow = ""
         if isinstance(q["price"], (int, float)) and isinstance(prev_price, (int, float)):
             if q["price"] > prev_price: trend_arrow = " <span style='color:green'>▲</span>"
             elif q["price"] < prev_price: trend_arrow = " <span style='color:red'>▼</span>"
 
         table_rows += f"<tr><td><strong>{b['name']}</strong></td><td>{b['isin']}</td><td>{b['coupon']}%</td><td>{b['maturity']}</td><td>{price_disp}{trend_arrow}</td><td><strong>{ytm_disp}</strong></td></tr>"
-        
-        # Passiamo al prompt di Gemini sia il prezzo attuale che quello precedente
         data_for_llm.append(f"{b['name']} ({b['isin']}): Prezzo Attuale {price_disp} (Prec: {prev_price_disp}), YTM {ytm_disp}")
 
     print("Generazione dell'outlook e variazioni...")
     insights_html = generate_outlook("\n".join(data_for_llm))
 
-    # Salva i dati di oggi per domani
     save_memory(current_memory)
 
     html_content = f"""
