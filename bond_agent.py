@@ -34,7 +34,11 @@ def save_memory(current_data):
         json.dump(current_data, f)
 
 def get_bond_quote(isin, fallback_p, fallback_y):
-    url = f"https://api.boerse-frankfurt.de/v1/data/quote_box/bond?isin={isin}"
+    # Spezzo la URL per evitare bug di formattazione nei copia-incolla
+    base = "https://api.boerse-frankfurt.de"
+    endpoint = f"/v1/data/quote_box/bond?isin={isin}"
+    url = f"{base}{endpoint}"
+    
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Accept": "application/json",
@@ -78,7 +82,11 @@ def generate_outlook(data_summary):
     </div>
     """
     
-    url = f"[https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=](https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=){GEMINI_API_KEY}"
+    # Trucco anti-link: spezzo l'indirizzo dell'API di Google così il browser non lo formatta male
+    host = "[https://generativelanguage.googleapis.com](https://generativelanguage.googleapis.com)"
+    path = "/v1beta/models/gemini-1.5-flash:generateContent?key="
+    url = f"{host}{path}{GEMINI_API_KEY}"
+    
     try:
         res = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, headers={"Content-Type": "application/json"}, timeout=20)
         
