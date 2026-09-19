@@ -34,16 +34,16 @@ def save_memory(current_data):
         json.dump(current_data, f)
 
 def get_bond_quote(isin, fallback_p, fallback_y):
-    # Spezzo la URL per evitare bug di formattazione nei copia-incolla
-    base = "https://api.boerse-frankfurt.de"
-    endpoint = f"/v1/data/quote_box/bond?isin={isin}"
-    url = f"{base}{endpoint}"
+    # Smontato per evitare auto-link
+    prot = "https"
+    dom = "api.boerse-frankfurt.de"
+    url = f"{prot}://{dom}/v1/data/quote_box/bond?isin={isin}"
     
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Accept": "application/json",
-        "Origin": "https://www.boerse-frankfurt.de",
-        "Referer": f"https://www.boerse-frankfurt.de/anleihe/{isin.lower()}"
+        "Origin": f"{prot}://www.boerse-frankfurt.de",
+        "Referer": f"{prot}://www.boerse-frankfurt.de/anleihe/{isin.lower()}"
     }
     for _ in range(2):
         try:
@@ -82,10 +82,11 @@ def generate_outlook(data_summary):
     </div>
     """
     
-    # Trucco anti-link: spezzo l'indirizzo dell'API di Google così il browser non lo formatta male
-    host = "[https://generativelanguage.googleapis.com](https://generativelanguage.googleapis.com)"
-    path = "/v1beta/models/gemini-1.5-flash:generateContent?key="
-    url = f"{host}{path}{GEMINI_API_KEY}"
+    # Smontato per sconfiggere il copia-incolla del browser
+    prot = "https"
+    dom = "generativelanguage.googleapis.com"
+    path = "/v1beta/models/gemini-1.5-flash:generateContent"
+    url = f"{prot}://{dom}{path}?key={GEMINI_API_KEY}"
     
     try:
         res = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, headers={"Content-Type": "application/json"}, timeout=20)
@@ -96,13 +97,11 @@ def generate_outlook(data_summary):
                 text = data["candidates"][0]["content"]["parts"][0]["text"]
                 return text.replace("```html", "").replace("```", "").strip()
             else:
-                return f"<p style='color:red;'>⚠️ Risposta bloccata o vuota. Gemini JSON: {str(data)}</p>"
+                return f"<p style='color:red;'>⚠️ Risposta bloccata o vuota.</p>"
         else:
-            print(f"Errore HTTP {res.status_code}: {res.text}")
-            return f"<p style='color:red;'>⚠️ Errore API: Codice {res.status_code}. Motivo: {res.text}</p>"
+            return f"<p style='color:red;'>⚠️ Errore API: Codice {res.status_code}.</p>"
             
     except Exception as e:
-        print(f"Errore di sistema: {e}")
         return f"<p style='color:red;'>⚠️ Errore di sistema durante la generazione: {e}</p>"
 
 def main():
@@ -130,9 +129,7 @@ def main():
         table_rows += f"<tr><td><strong>{b['name']}</strong></td><td>{b['isin']}</td><td>{b['coupon']}%</td><td>{b['maturity']}</td><td>{price_disp}{trend_arrow}</td><td><strong>{ytm_disp}</strong></td></tr>"
         data_for_llm.append(f"{b['name']} ({b['isin']}): Prezzo Attuale {price_disp} (Prec: {prev_price_disp}), YTM {ytm_disp}")
 
-    print("Generazione dell'outlook e variazioni...")
     insights_html = generate_outlook("\n".join(data_for_llm))
-
     save_memory(current_memory)
 
     html_content = f"""
