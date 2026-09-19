@@ -34,7 +34,6 @@ def save_memory(current_data):
         json.dump(current_data, f)
 
 def get_bond_quote(isin, fallback_p, fallback_y):
-    # Smontato per evitare auto-link
     prot = "https"
     dom = "api.boerse-frankfurt.de"
     url = f"{prot}://{dom}/v1/data/quote_box/bond?isin={isin}"
@@ -62,7 +61,7 @@ def get_bond_quote(isin, fallback_p, fallback_y):
 def generate_outlook(data_summary):
     if not GEMINI_API_KEY:
         return "<p>⚠️ API Key mancante nei Secrets.</p>"
-
+    
     prompt = f"""
     Sei un consulente finanziario per un investitore svizzero.
     Ecco i dati attuali e i dati della rilevazione precedente (Prec) per i bond EUR:
@@ -82,14 +81,14 @@ def generate_outlook(data_summary):
     </div>
     """
     
-    # Smontato per sconfiggere il copia-incolla del browser
+    # Indirizzo per il modello PRO (molto più intelligente nelle analisi finanziarie)
     prot = "https"
     dom = "generativelanguage.googleapis.com"
-    path = "/v1beta/models/gemini-1.5-flash:generateContent"
+    path = "/v1beta/models/gemini-1.5-pro:generateContent"
     url = f"{prot}://{dom}{path}?key={GEMINI_API_KEY}"
     
     try:
-        res = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, headers={"Content-Type": "application/json"}, timeout=20)
+        res = requests.post(url, json={"contents": [{"parts": [{"text": prompt}]}]}, headers={"Content-Type": "application/json"}, timeout=25)
         
         if res.status_code == 200:
             data = res.json()
@@ -97,9 +96,9 @@ def generate_outlook(data_summary):
                 text = data["candidates"][0]["content"]["parts"][0]["text"]
                 return text.replace("```html", "").replace("```", "").strip()
             else:
-                return f"<p style='color:red;'>⚠️ Risposta bloccata o vuota.</p>"
+                return f"<p style='color:red;'>⚠️ Risposta vuota dall'IA.</p>"
         else:
-            return f"<p style='color:red;'>⚠️ Errore API: Codice {res.status_code}.</p>"
+            return f"<p style='color:red;'>⚠️ Errore API: Codice {res.status_code}. {res.text}</p>"
             
     except Exception as e:
         return f"<p style='color:red;'>⚠️ Errore di sistema durante la generazione: {e}</p>"
@@ -192,7 +191,7 @@ def main():
                 </div>
             </div>
 
-            <div class="footer">Generato automaticamente tramite GitHub Actions e Gemini API.</div>
+            <div class="footer">Generato automaticamente tramite GitHub Actions e Gemini API (Modello: 1.5-Pro).</div>
         </div>
     </body>
     </html>
