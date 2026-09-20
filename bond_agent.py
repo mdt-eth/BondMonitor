@@ -1,7 +1,6 @@
 import os
 import sys
 import subprocess
-import re
 
 # ==========================================
 # 0. AUTO-INSTALLAZIONE DIPENDENZE MANCANTI
@@ -11,11 +10,10 @@ def install_dependencies():
     packages = {
         "pandas": "pandas",
         "yfinance": "yfinance",
-        "tabulate": "tabulate",         # Aggiunto per il metodo to_markdown()
-        "google.genai": "google-genai"  # Nuovo SDK ufficiale di Google
+        "tabulate": "tabulate",
+        "google.genai": "google-genai"
     }
     
-    # Rimuovi il vecchio pacchetto se presente per evitare conflitti
     try:
         __import__("google.generativeai")
         print("[*] Rimozione del pacchetto deprecato 'google-generativeai'...")
@@ -25,18 +23,20 @@ def install_dependencies():
 
     for module_name, pip_name in packages.items():
         try:
-            __import__(module_name)
+            if module_name == "google.genai":
+                __import__("google.genai") # Import speciale per il nuovo SDK
+            else:
+                __import__(module_name)
         except ImportError:
             print(f"[*] Rilevata carenza: '{pip_name}'. Installazione automatica in corso...")
             subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name, "--quiet"])
 
-# Esegui il controllo prima di caricare il resto del codice
 install_dependencies()
 
-# Importazioni sicure
 import pandas as pd
 import yfinance as yf
 from google import genai
+from google.genai import errors
 
 # ==========================================
 # 1. CONFIGURAZIONE & SELEZIONE MODELLO AUTO
@@ -45,41 +45,40 @@ API_KEY = os.environ.get("GEMINI_API_KEY")
 if not API_KEY:
     raise ValueError("GEMINI_API_KEY non trovata nelle variabili d'ambiente.")
 
-# Inizializzazione del client con il nuovo SDK
 client = genai.Client(api_key=API_KEY)
 
 
-def get_latest_free_flash_model() -> str:
+def get_safest_flash_model() -> str:
     """
-    Ispeziona i modelli abilitati sul tuo account e seleziona automaticamente
-    il modello Flash (free tier) di generazione più recente disponibile.
+    Usa un approccio a Whitelist per evitare modelli sperimentali (es. 3.x) 
+    che l'API elenca ma su cui restituisce Errore 404.
     """
-    flash_candidates = []
-
-    # Iterazione usando il nuovo SDK client.models.list()
-    for m in client.models.list():
-        name = m.name.lower()
-        # Filtra modelli Flash ed esclude varianti sperimentali di fine-tuning
-        if "flash" in name and "tuning" not in name:
-            match = re.search(r"gemini[^\d]*(\d+(?:\.\d+)?)", name)
-            version = float(match.group(1)) if match else 0.0
-            flash_candidates.append((version, m.name))
-
-    if not flash_candidates:
-        return "gemini-1.5-flash"
-
-    # Ordina per versione numerica decrescente
-    flash_candidates.sort(key=lambda x: x[0], reverse=True)
-    return flash_candidates[0][1]
+    # Ordine di preferenza fisso (dal più nuovo, purché ufficiale, al più collaudato)
+    preferred_models = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash"
+    ]
+    
+    try:
+        available_models = [m.name.lower() for m in client.models.list()]
+        # Pulizia: rimuove l'eventuale prefisso "models/" che Google a volte aggiunge
+        clean_available = [name.replace("models/", "") for name in available_models]
+        
+        for pref in preferred_models:
+            if pref in clean_available:
+                return pref
+    except Exception as e:
+        print(f"[*] Attenzione: Impossibile leggere la lista dei modelli ({e}).")
+        
+    # Fallback garantito
+    return "gemini-1.5-flash"
 
 
 # ==========================================
 # 2. RACCOLTA DATI OBBLIGAZIONARI (BOND DATA)
 # ==========================================
 def fetch_bond_yields():
-    """
-    Recupera i rendimenti di riferimento.
-    """
     tickers = {
         "US 10Y Yield": "^TNX",
         "US 2Y Yield": "^IRX",
@@ -114,7 +113,7 @@ def fetch_bond_yields():
 # 3. ANALISI TRAMITE GEMINI
 # ==========================================
 def run_bond_monitor():
-    best_model_name = get_latest_free_flash_model()
+    best_model_name = get_safest_flash_model()
     print(f"[*] Modello selezionato: {best_model_name}")
 
     macro_yields, portfolio = fetch_bond_yields()
@@ -129,21 +128,31 @@ Sei un analista obbligazionario esperto. Analizza i seguenti dati di mercato e i
 {portfolio.to_markdown(index=False)}
 
 Fornisci un'analisi sintetica strutturata in:
-1. **Dinamica dei Tassi & Curva**: Movimento dei benchmark e implicazioni (appiattimento/inclinazione).
-2. **Valutazione Rischio Portafoglio**: Sensibilità ai tassi (Duration) e rischio di credito (Rating).
-3. **Alert Operativi**: Eventuali segnali di criticità o opportunità di ribilanciamento.
+1. **Dinamica dei Tassi & Curva**: Movimento dei benchmark e implicazioni.
+2. **Valutazione Rischio Portafoglio**: Sensibilità ai tassi e rischio di credito.
+3. **Alert Operativi**: Eventuali segnali di criticità.
 """
 
     print("[*] Generazione report in corso...\n")
     try:
-        # Nuova sintassi di generazione per il pacchetto google-genai
         response = client.models.generate_content(
             model=best_model_name,
             contents=prompt
         )
         print(response.text)
+    except errors.APIError as api_err:
+        # Se anche il modello della whitelist dovesse restituire 404, entra in funzione l'ancora di salvezza
+        if api_err.code == 404:
+            print(f"[*] Il modello {best_model_name} non è abilitato. Fallback forzato su gemini-1.5-flash...")
+            response = client.models.generate_content(
+                model="gemini-1.5-flash",
+                contents=prompt
+            )
+            print(response.text)
+        else:
+            print(f"Errore API: {api_err}")
     except Exception as e:
-        print(f"Errore durante l'analisi: {e}")
+        print(f"Errore inaspettato durante l'analisi: {e}")
 
 if __name__ == "__main__":
     run_bond_monitor()
