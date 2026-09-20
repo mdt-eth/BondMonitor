@@ -61,7 +61,7 @@ def get_bond_quote(isin, fallback_p, fallback_y):
 def generate_outlook(data_summary):
     if not GEMINI_API_KEY:
         return "<p>⚠️ API Key mancante nei Secrets.</p>"
-    
+
     prompt = f"""
     Sei un consulente finanziario per un investitore svizzero.
     Ecco i dati attuali e i dati della rilevazione precedente (Prec) per i bond EUR:
@@ -81,10 +81,10 @@ def generate_outlook(data_summary):
     </div>
     """
     
-    # Indirizzo per il modello PRO (molto più intelligente nelle analisi finanziarie)
     prot = "https"
     dom = "generativelanguage.googleapis.com"
-    path = "/v1beta/models/gemini-1.5-pro:generateContent"
+    # Abbiamo aggiornato il modello a gemini-2.5-pro (i nuovi account AQ. non hanno accesso all'1.5)
+    path = "/v1beta/models/gemini-2.5-pro:generateContent"
     url = f"{prot}://{dom}{path}?key={GEMINI_API_KEY}"
     
     try:
@@ -191,7 +191,7 @@ def main():
                 </div>
             </div>
 
-            <div class="footer">Generato automaticamente tramite GitHub Actions e Gemini API (Modello: 1.5-Pro).</div>
+            <div class="footer">Generato automaticamente tramite GitHub Actions e Gemini API (Modello: 2.5-Pro).</div>
         </div>
     </body>
     </html>
