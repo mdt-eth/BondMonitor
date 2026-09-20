@@ -3,10 +3,9 @@ import sys
 import subprocess
 
 # ==========================================
-# 0. AUTO-INSTALLAZIONE DIPENDENZE MANCANTI
+# 0. AUTO-INSTALLAZIONE DIPENDENZE
 # ==========================================
 def install_dependencies():
-    """Controlla le librerie necessarie e le installa se mancano."""
     packages = {
         "pandas": "pandas",
         "yfinance": "yfinance",
@@ -24,7 +23,7 @@ def install_dependencies():
     for module_name, pip_name in packages.items():
         try:
             if module_name == "google.genai":
-                __import__("google.genai") # Import speciale per il nuovo SDK
+                __import__("google.genai")
             else:
                 __import__(module_name)
         except ImportError:
@@ -39,7 +38,7 @@ from google import genai
 from google.genai import errors
 
 # ==========================================
-# 1. CONFIGURAZIONE & SELEZIONE MODELLO AUTO
+# 1. CONFIGURAZIONE & SELEZIONE MODELLO
 # ==========================================
 API_KEY = os.environ.get("GEMINI_API_KEY")
 if not API_KEY:
@@ -50,29 +49,26 @@ client = genai.Client(api_key=API_KEY)
 
 def get_safest_flash_model() -> str:
     """
-    Usa un approccio a Whitelist per evitare modelli sperimentali (es. 3.x) 
-    che l'API elenca ma su cui restituisce Errore 404.
+    Whitelist aggiornata alle versioni 3.x richieste dall'API.
     """
-    # Ordine di preferenza fisso (dal più nuovo, purché ufficiale, al più collaudato)
     preferred_models = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash"
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+        "gemini-3.0-flash"
     ]
     
     try:
         available_models = [m.name.lower() for m in client.models.list()]
-        # Pulizia: rimuove l'eventuale prefisso "models/" che Google a volte aggiunge
         clean_available = [name.replace("models/", "") for name in available_models]
         
         for pref in preferred_models:
             if pref in clean_available:
                 return pref
     except Exception as e:
-        print(f"[*] Attenzione: Impossibile leggere la lista dei modelli ({e}).")
+        print(f"[*] Impossibile leggere la lista dei modelli ({e}). Uso default.")
         
-    # Fallback garantito
-    return "gemini-1.5-flash"
+    # Fallback esatto suggerito dall'errore dell'API
+    return "gemini-3.6-flash"
 
 
 # ==========================================
@@ -110,7 +106,7 @@ def fetch_bond_yields():
 
 
 # ==========================================
-# 3. ANALISI TRAMITE GEMINI
+# 3. ANALISI TRAMITE GEMINI (API CHAT)
 # ==========================================
 def run_bond_monitor():
     best_model_name = get_safest_flash_model()
@@ -135,19 +131,15 @@ Fornisci un'analisi sintetica strutturata in:
 
     print("[*] Generazione report in corso...\n")
     try:
-        response = client.models.generate_content(
-            model=best_model_name,
-            contents=prompt
-        )
+        # Passaggio da generate_content a chats.create().send_message() per rispettare le nuove direttive SDK
+        chat = client.chats.create(model=best_model_name)
+        response = chat.send_message(prompt)
         print(response.text)
     except errors.APIError as api_err:
-        # Se anche il modello della whitelist dovesse restituire 404, entra in funzione l'ancora di salvezza
         if api_err.code == 404:
-            print(f"[*] Il modello {best_model_name} non è abilitato. Fallback forzato su gemini-1.5-flash...")
-            response = client.models.generate_content(
-                model="gemini-1.5-flash",
-                contents=prompt
-            )
+            print(f"[*] Fallback d'emergenza diretto su gemini-3.6-flash...")
+            chat = client.chats.create(model="gemini-3.6-flash")
+            response = chat.send_message(prompt)
             print(response.text)
         else:
             print(f"Errore API: {api_err}")
