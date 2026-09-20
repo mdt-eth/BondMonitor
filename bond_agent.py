@@ -83,8 +83,8 @@ def generate_outlook(data_summary):
     
     prot = "https"
     dom = "generativelanguage.googleapis.com"
-    # Modello aggiornato a gemini-3.1-pro-preview come richiesto dal server
-    path = "/v1beta/models/gemini-3.1-pro-preview:generateContent"
+    # Modello aggiornato alla versione Flash di ultima generazione (gratuita e senza quota 0)
+    path = "/v1beta/models/gemini-3.1-flash:generateContent"
     url = f"{prot}://{dom}{path}?key={GEMINI_API_KEY}"
     
     try:
@@ -191,7 +191,7 @@ def main():
                 </div>
             </div>
 
-            <div class="footer">Generato automaticamente tramite GitHub Actions e Gemini API (Modello: 3.1-Pro-Preview).</div>
+            <div class="footer">Generato automaticamente tramite GitHub Actions e Gemini API (Modello: 3.1-Flash).</div>
         </div>
     </body>
     </html>
