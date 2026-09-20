@@ -1,5 +1,29 @@
 import os
+import sys
+import subprocess
 import re
+
+# ==========================================
+# 0. AUTO-INSTALLAZIONE DIPENDENZE MANCANTI
+# ==========================================
+def install_dependencies():
+    """Controlla le librerie necessarie e le installa se mancano."""
+    packages = {
+        "pandas": "pandas",
+        "yfinance": "yfinance",
+        "google.generativeai": "google-generativeai"
+    }
+    for module_name, pip_name in packages.items():
+        try:
+            __import__(module_name)
+        except ImportError:
+            print(f"[*] Rilevata carenza: '{pip_name}'. Installazione automatica in corso...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name, "--quiet"])
+
+# Esegui il controllo prima di caricare il resto del codice
+install_dependencies()
+
+# Ora possiamo importare tutto in totale sicurezza
 import pandas as pd
 import yfinance as yf
 import google.generativeai as genai
@@ -31,13 +55,11 @@ def get_latest_free_flash_model() -> str:
                 flash_candidates.append((version, m.name))
 
     if not flash_candidates:
-        # Fallback di emergenza
         return "models/gemini-1.5-flash"
 
     # Ordina per versione numerica decrescente (es. 2.0 > 1.5)
     flash_candidates.sort(key=lambda x: x[0], reverse=True)
-    selected_model = flash_candidates[0][1]
-    return selected_model
+    return flash_candidates[0][1]
 
 
 # ==========================================
@@ -45,7 +67,7 @@ def get_latest_free_flash_model() -> str:
 # ==========================================
 def fetch_bond_yields():
     """
-    Recupera i rendimenti di riferimento (US 10Y, US 2Y, Bund 10Y proxy/BTP proxy).
+    Recupera i rendimenti di riferimento (US 10Y, US 2Y, US 30Y).
     """
     tickers = {
         "US 10Y Yield": "^TNX",
@@ -60,7 +82,7 @@ def fetch_bond_yields():
             if not data.empty:
                 current_yield = data["Close"].iloc[-1]
                 prev_yield = data["Close"].iloc[-2]
-                delta_bp = (current_yield - prev_yield) * 100  # Variazione in punti base
+                delta_bp = (current_yield - prev_yield) * 100
                 snapshot[name] = {
                     "Rendimento (%)": round(current_yield, 2),
                     "Variazione 1G (bp)": round(delta_bp, 1),
@@ -68,7 +90,6 @@ def fetch_bond_yields():
         except Exception:
             pass
 
-    # Portafoglio obbligazionario monitorato (personalizzabile)
     sample_portfolio = [
         {"Isin": "IT0005436693", "Nome": "BTP 0.95% Mar 2037", "Prezzo": 68.50, "Duration": 11.2, "Rating": "BBB"},
         {"Isin": "DE0001102580", "Nome": "Bund 0.0% Feb 2032", "Prezzo": 79.20, "Duration": 7.8, "Rating": "AAA"},
@@ -82,12 +103,10 @@ def fetch_bond_yields():
 # 3. ANALISI TRAMITE GEMINI
 # ==========================================
 def run_bond_monitor():
-    # 1. Trova il modello migliore e inizializzalo
     best_model_name = get_latest_free_flash_model()
-    print(f"-> Modello selezionato: {best_model_name}")
+    print(f"[*] Modello selezionato: {best_model_name}")
     model = genai.GenerativeModel(best_model_name)
 
-    # 2. Raccogli i dati di mercato
     macro_yields, portfolio = fetch_bond_yields()
 
     prompt = f"""
@@ -105,10 +124,12 @@ Fornisci un'analisi sintetica strutturata in:
 3. **Alert Operativi**: Eventuali segnali di criticità o opportunità di ribilanciamento.
 """
 
-    print("-> Generazione report in corso...\n")
-    response = model.generate_content(prompt)
-    print(response.text)
-
+    print("[*] Generazione report in corso...\n")
+    try:
+        response = model.generate_content(prompt)
+        print(response.text)
+    except Exception as e:
+        print(f"Errore durante l'analisi: {e}")
 
 if __name__ == "__main__":
     run_bond_monitor()
