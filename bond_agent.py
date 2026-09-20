@@ -11,8 +11,18 @@ def install_dependencies():
     packages = {
         "pandas": "pandas",
         "yfinance": "yfinance",
-        "google.generativeai": "google-generativeai"
+        "tabulate": "tabulate",         # Aggiunto per il metodo to_markdown()
+        "google.genai": "google-genai"  # Nuovo SDK ufficiale di Google
     }
+    
+    # Rimuovi il vecchio pacchetto se presente per evitare conflitti
+    try:
+        __import__("google.generativeai")
+        print("[*] Rimozione del pacchetto deprecato 'google-generativeai'...")
+        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "google-generativeai", "--quiet"])
+    except ImportError:
+        pass
+
     for module_name, pip_name in packages.items():
         try:
             __import__(module_name)
@@ -23,10 +33,10 @@ def install_dependencies():
 # Esegui il controllo prima di caricare il resto del codice
 install_dependencies()
 
-# Ora possiamo importare tutto in totale sicurezza
+# Importazioni sicure
 import pandas as pd
 import yfinance as yf
-import google.generativeai as genai
+from google import genai
 
 # ==========================================
 # 1. CONFIGURAZIONE & SELEZIONE MODELLO AUTO
@@ -35,7 +45,8 @@ API_KEY = os.environ.get("GEMINI_API_KEY")
 if not API_KEY:
     raise ValueError("GEMINI_API_KEY non trovata nelle variabili d'ambiente.")
 
-genai.configure(api_key=API_KEY)
+# Inizializzazione del client con il nuovo SDK
+client = genai.Client(api_key=API_KEY)
 
 
 def get_latest_free_flash_model() -> str:
@@ -45,19 +56,19 @@ def get_latest_free_flash_model() -> str:
     """
     flash_candidates = []
 
-    for m in genai.list_models():
-        if "generateContent" in m.supported_generation_methods:
-            name = m.name.lower()
-            # Filtra modelli Flash ed esclude varianti sperimentali di fine-tuning
-            if "flash" in name and "tuning" not in name:
-                match = re.search(r"gemini[^\d]*(\d+(?:\.\d+)?)", name)
-                version = float(match.group(1)) if match else 0.0
-                flash_candidates.append((version, m.name))
+    # Iterazione usando il nuovo SDK client.models.list()
+    for m in client.models.list():
+        name = m.name.lower()
+        # Filtra modelli Flash ed esclude varianti sperimentali di fine-tuning
+        if "flash" in name and "tuning" not in name:
+            match = re.search(r"gemini[^\d]*(\d+(?:\.\d+)?)", name)
+            version = float(match.group(1)) if match else 0.0
+            flash_candidates.append((version, m.name))
 
     if not flash_candidates:
-        return "models/gemini-1.5-flash"
+        return "gemini-1.5-flash"
 
-    # Ordina per versione numerica decrescente (es. 2.0 > 1.5)
+    # Ordina per versione numerica decrescente
     flash_candidates.sort(key=lambda x: x[0], reverse=True)
     return flash_candidates[0][1]
 
@@ -67,7 +78,7 @@ def get_latest_free_flash_model() -> str:
 # ==========================================
 def fetch_bond_yields():
     """
-    Recupera i rendimenti di riferimento (US 10Y, US 2Y, US 30Y).
+    Recupera i rendimenti di riferimento.
     """
     tickers = {
         "US 10Y Yield": "^TNX",
@@ -105,7 +116,6 @@ def fetch_bond_yields():
 def run_bond_monitor():
     best_model_name = get_latest_free_flash_model()
     print(f"[*] Modello selezionato: {best_model_name}")
-    model = genai.GenerativeModel(best_model_name)
 
     macro_yields, portfolio = fetch_bond_yields()
 
@@ -126,7 +136,11 @@ Fornisci un'analisi sintetica strutturata in:
 
     print("[*] Generazione report in corso...\n")
     try:
-        response = model.generate_content(prompt)
+        # Nuova sintassi di generazione per il pacchetto google-genai
+        response = client.models.generate_content(
+            model=best_model_name,
+            contents=prompt
+        )
         print(response.text)
     except Exception as e:
         print(f"Errore durante l'analisi: {e}")
