@@ -24,7 +24,7 @@
     <body>
         <div class="container">
             <h1>📊 Dashboard Bond Corporate EUR</h1>
-            <p>Ultimo aggiornamento automatico: <strong>19/09/2026 11:24</strong></p>
+            <p>Ultimo aggiornamento automatico: <strong>20/09/2026 19:21</strong></p>
             
             <div style="overflow-x:auto;">
                 <table>
@@ -35,7 +35,14 @@
 
             <div class="grid-container">
                 <div class="analysis-col">
-                    <p style='color:red;'>⚠️ Errore API: Codice 404.</p>
+                    <p style='color:red;'>⚠️ Errore API: Codice 404. {
+  "error": {
+    "code": 404,
+    "message": "This model models/gemini-2.5-pro is no longer available to new users. Please update your code to use models/gemini-3.1-pro-preview for the latest features and improvements. We recommend you to use the Interactions API.",
+    "status": "NOT_FOUND"
+  }
+}
+</p>
                 </div>
                 
                 <div class="chart-container">
@@ -58,7 +65,7 @@
                 </div>
             </div>
 
-            <div class="footer">Generato automaticamente tramite GitHub Actions e Gemini API.</div>
+            <div class="footer">Generato automaticamente tramite GitHub Actions e Gemini API (Modello: 2.5-Pro).</div>
         </div>
     </body>
     </html>
