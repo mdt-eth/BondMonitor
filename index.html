@@ -22,7 +22,7 @@
 </head>
 <body>
     <h1>Dashboard Bond Monitor</h1>
-    <div class="timestamp">Dati aggiornati al: 21/09/2026 22:06:41</div>
+    <div class="timestamp">Dati API aggiornati al: 21/09/2026 22:23:33</div>
     <h2>Rendimenti Macro</h2><table border="1" class="dataframe data-table">
   <thead>
     <tr style="text-align: left;">
@@ -53,7 +53,7 @@
     </tr>
   </tbody>
 </table>
-    <h2>Shortlist Corporate (Copertura Internazionale)</h2><table border="1" class="dataframe data-table">
+    <h2>Shortlist Corporate (Copertura Ufficiale Xetra/EODHD)</h2><table border="1" class="dataframe data-table">
   <thead>
     <tr style="text-align: left;">
       <th>Isin</th>
@@ -81,9 +81,9 @@
     <tr>
       <td>XS3171591889</td>
       <td>E.ON 3.000% 2031</td>
-      <td>96.10</td>
-      <td>377.12</td>
-      <td>-74.52%</td>
+      <td>N/D</td>
+      <td>N/D</td>
+      <td>N/D</td>
     </tr>
     <tr>
       <td>FR001400AF72</td>
@@ -95,9 +95,9 @@
     <tr>
       <td>DE000A2TSDE2</td>
       <td>Deutsche Telekom 1.750% 2031</td>
-      <td>92.25</td>
-      <td>377.12</td>
-      <td>-75.54%</td>
+      <td>N/D</td>
+      <td>N/D</td>
+      <td>N/D</td>
     </tr>
     <tr>
       <td>XS2450200741</td>
@@ -139,7 +139,7 @@
     <div class="ai-panel">
         <h2>Genera Analisi</h2>
         <button id="ai-btn" onclick="generateAnalysis()">Elabora Dati con Gemini</button>
-        <button onclick="localStorage.removeItem('gemini_api_key'); alert('Chiave rimossa.');" style="background:none;border:none;color:#666;text-decoration:underline;cursor:pointer;margin-left:15px;">Reset API Key</button>
+        <button onclick="localStorage.removeItem('gemini_api_key'); alert('Chiave Gemini rimossa.');" style="background:none;border:none;color:#666;text-decoration:underline;cursor:pointer;margin-left:15px;">Reset API Key Gemini</button>
         <div id="ai-result"></div>
     </div>
     <pre id="raw-data" style="display:none;">BENCHMARK:
@@ -152,9 +152,9 @@ PORTAFOGLIO:
         Isin                         Nome Prezzo (€) Chiusura Prec. (€) Variazione (%)
 XS3358330820      Enel S.p.A. 3.875% 2033        N/D                N/D            N/D
 XS2655852726     Terna S.p.A. 3.875% 2033        N/D                N/D            N/D
-XS3171591889             E.ON 3.000% 2031      96.10             377.12        -74.52%
+XS3171591889             E.ON 3.000% 2031        N/D                N/D            N/D
 FR001400AF72      Orange S.A. 2.375% 2032        N/D                N/D            N/D
-DE000A2TSDE2 Deutsche Telekom 1.750% 2031      92.25             377.12        -75.54%
+DE000A2TSDE2 Deutsche Telekom 1.750% 2031        N/D                N/D            N/D
 XS2450200741         Unilever 1.250% 2031        N/D                N/D            N/D
 XS2455983861        Iberdrola 1.375% 2032        N/D                N/D            N/D
 FR001400OJB9       Engie S.A. 3.625% 2031        N/D                N/D            N/D
@@ -163,13 +163,13 @@ FR0014016SW6                Sanofi 2.000%        N/D                N/D         
     <script>
         async function generateAnalysis() {
             let apiKey = localStorage.getItem('gemini_api_key');
-            if (!apiKey) { apiKey = prompt("API Key Gemini:"); if (!apiKey) return; localStorage.setItem('gemini_api_key', apiKey); }
+            if (!apiKey) { apiKey = prompt("Inserisci la tua API Key Gemini (viene salvata solo nel browser):"); if (!apiKey) return; localStorage.setItem('gemini_api_key', apiKey); }
             const btn = document.getElementById('ai-btn'), resDiv = document.getElementById('ai-result');
-            btn.disabled = true; btn.innerText = "Elaborazione..."; resDiv.innerHTML = "<p><em>Lettura dati in corso...</em></p>";
+            btn.disabled = true; btn.innerText = "Elaborazione in corso..."; resDiv.innerHTML = "<p><em>Lettura dati oracolo in corso...</em></p>";
             try {
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({contents: [{parts: [{text: `Analizza questi dati estratti oggi:\n\n${document.getElementById('raw-data').innerText}\n\nFornisci un'analisi sintetica in HTML (usa solo <h3>, <ul>, <li>, <b>). Nessun blocco markdown.`}]}]})
+                    body: JSON.stringify({contents: [{parts: [{text: `Sei un analista obbligazionario. Analizza questi dati estratti oggi:\n\n${document.getElementById('raw-data').innerText}\n\nFornisci un'analisi sintetica in HTML (usa solo <h3>, <ul>, <li>, <b>). Nessun blocco markdown.`}]}]})
                 });
                 if (!res.ok) throw new Error("Errore Google API: " + res.status);
                 const data = await res.json();
