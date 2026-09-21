@@ -42,7 +42,6 @@ client = genai.Client(api_key=API_KEY)
 # Modello fisso imposto dall'aggiornamento API di Google (NESSUNA RICERCA AUTOMATICA)
 MODEL_ID = "gemini-3.6-flash"
 
-
 # ==========================================
 # 2. RACCOLTA DATI OBBLIGAZIONARI 
 # ==========================================
