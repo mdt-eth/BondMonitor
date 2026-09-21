@@ -5,31 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bond Monitor Dashboard</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 950px; margin: auto; color: #333; line-height: 1.5; background-color: #fcfcfc; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px; max-width: 950px; margin: auto; background-color: #fcfcfc; color: #333; }
         h1 { color: #004494; border-bottom: 2px solid #004494; padding-bottom: 10px; }
         h2 { color: #0056b3; font-size: 1.2em; margin-top: 30px; }
         .timestamp { color: #777; font-size: 0.9em; margin-bottom: 20px; font-style: italic; }
-        
-        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.95em; box-shadow: 0 1px 3px rgba(0,0,0,0.1); background: white; }
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.95em; background: white; }
         .data-table th, .data-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        .data-table th { background-color: #f4f6f8; font-weight: bold; color: #333; }
+        .data-table th { background-color: #f4f6f8; }
         .data-table tr:nth-child(even) { background-color: #f9f9f9; }
-        
-        .ai-panel { background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 25px; margin-top: 35px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        #ai-btn { background-color: #004494; color: white; border: none; padding: 12px 24px; font-size: 1em; border-radius: 6px; cursor: pointer; transition: background 0.3s; font-weight: bold; }
-        #ai-btn:hover { background-color: #003370; }
+        .ai-panel { background: white; border: 1px solid #e9ecef; border-radius: 8px; padding: 25px; margin-top: 35px; }
+        #ai-btn { background-color: #004494; color: white; border: none; padding: 12px 24px; font-size: 1em; border-radius: 6px; cursor: pointer; font-weight: bold; }
         #ai-btn:disabled { background-color: #999; cursor: not-allowed; }
-        
         #ai-result { margin-top: 25px; padding-top: 20px; border-top: 1px dashed #ccc; }
         .error { color: #d9534f; font-weight: bold; padding: 10px; border-left: 4px solid #d9534f; background: #fdf2f2; }
     </style>
 </head>
 <body>
     <h1>Dashboard Bond Monitor</h1>
-    <div class="timestamp">Dati raccolti in tempo reale il: 21/09/2026 21:57:50</div>
-    
-    <h2>Rendimenti Macro (Benchmark)</h2>
-    <table border="1" class="dataframe data-table">
+    <div class="timestamp">Dati aggiornati al: 21/09/2026 22:06:41</div>
+    <h2>Rendimenti Macro</h2><table border="1" class="dataframe data-table">
   <thead>
     <tr style="text-align: left;">
       <th>Benchmark</th>
@@ -59,9 +53,7 @@
     </tr>
   </tbody>
 </table>
-    
-    <h2>Shortlist Portafoglio (Corporate & Sovereign)</h2>
-    <table border="1" class="dataframe data-table">
+    <h2>Shortlist Corporate (Copertura Internazionale)</h2><table border="1" class="dataframe data-table">
   <thead>
     <tr style="text-align: left;">
       <th>Isin</th>
@@ -89,9 +81,9 @@
     <tr>
       <td>XS3171591889</td>
       <td>E.ON 3.000% 2031</td>
-      <td>N/D</td>
-      <td>N/D</td>
-      <td>N/D</td>
+      <td>96.10</td>
+      <td>377.12</td>
+      <td>-74.52%</td>
     </tr>
     <tr>
       <td>FR001400AF72</td>
@@ -104,8 +96,8 @@
       <td>DE000A2TSDE2</td>
       <td>Deutsche Telekom 1.750% 2031</td>
       <td>92.25</td>
-      <td>92.19</td>
-      <td>+0.07%</td>
+      <td>377.12</td>
+      <td>-75.54%</td>
     </tr>
     <tr>
       <td>XS2450200741</td>
@@ -137,23 +129,19 @@
     </tr>
     <tr>
       <td>FR0014016SW6</td>
-      <td>Sanofi 3.375% 2033</td>
+      <td>Sanofi 2.000%</td>
       <td>N/D</td>
       <td>N/D</td>
       <td>N/D</td>
     </tr>
   </tbody>
 </table>
-
     <div class="ai-panel">
-        <h2>Genera Analisi con Gemini</h2>
-        <p>Clicca il bottone per generare il commento finanziario basato sulle chiusure odierne.</p>
-        <button id="ai-btn" onclick="generateAnalysis()">Elabora Dati</button>
-        <button id="reset-key-btn" onclick="resetApiKey()" style="background:none; border:none; color:#666; text-decoration:underline; font-size:0.8em; cursor:pointer; margin-left:15px;">Aggiorna API Key</button>
-        
+        <h2>Genera Analisi</h2>
+        <button id="ai-btn" onclick="generateAnalysis()">Elabora Dati con Gemini</button>
+        <button onclick="localStorage.removeItem('gemini_api_key'); alert('Chiave rimossa.');" style="background:none;border:none;color:#666;text-decoration:underline;cursor:pointer;margin-left:15px;">Reset API Key</button>
         <div id="ai-result"></div>
     </div>
-
     <pre id="raw-data" style="display:none;">BENCHMARK:
    Benchmark Rendimento (%) Chiusura Prec. (%) Variazione (bp)
 US 10Y Yield          4.96%              5.00%            -3.5
@@ -164,67 +152,30 @@ PORTAFOGLIO:
         Isin                         Nome Prezzo (€) Chiusura Prec. (€) Variazione (%)
 XS3358330820      Enel S.p.A. 3.875% 2033        N/D                N/D            N/D
 XS2655852726     Terna S.p.A. 3.875% 2033        N/D                N/D            N/D
-XS3171591889             E.ON 3.000% 2031        N/D                N/D            N/D
+XS3171591889             E.ON 3.000% 2031      96.10             377.12        -74.52%
 FR001400AF72      Orange S.A. 2.375% 2032        N/D                N/D            N/D
-DE000A2TSDE2 Deutsche Telekom 1.750% 2031      92.25              92.19         +0.07%
+DE000A2TSDE2 Deutsche Telekom 1.750% 2031      92.25             377.12        -75.54%
 XS2450200741         Unilever 1.250% 2031        N/D                N/D            N/D
 XS2455983861        Iberdrola 1.375% 2032        N/D                N/D            N/D
 FR001400OJB9       Engie S.A. 3.625% 2031        N/D                N/D            N/D
 BE6248644013         AB InBev 3.250% 2033        N/D                N/D            N/D
-FR0014016SW6           Sanofi 3.375% 2033        N/D                N/D            N/D</pre>
-
+FR0014016SW6                Sanofi 2.000%        N/D                N/D            N/D</pre>
     <script>
-        function resetApiKey() {
-            localStorage.removeItem('gemini_api_key');
-            alert('Chiave API cancellata. Ti verrà richiesta al prossimo click.');
-        }
-
         async function generateAnalysis() {
             let apiKey = localStorage.getItem('gemini_api_key');
-            if (!apiKey) {
-                apiKey = prompt("Inserisci la tua API Key di Gemini:");
-                if (!apiKey) return;
-                localStorage.setItem('gemini_api_key', apiKey);
-            }
-
-            const btn = document.getElementById('ai-btn');
-            const resultDiv = document.getElementById('ai-result');
-            
-            btn.disabled = true;
-            btn.innerText = "Consultazione in corso...";
-            resultDiv.innerHTML = "<p><em>Elaborazione dell'analisi sui bond odierni...</em></p>";
-
-            const rawData = document.getElementById('raw-data').innerText;
-            const promptText = `Sei un analista obbligazionario. Analizza questi dati estratti oggi:\n\n${rawData}\n\nFornisci un'analisi sintetica. Evidenzia quali titoli hanno registrato le variazioni più interessanti. FORMATTA LA TUA RISPOSTA IN HTML (usa i tag <h3>, <ul>, <li>, <b>). Non includere markdown.`;
-
+            if (!apiKey) { apiKey = prompt("API Key Gemini:"); if (!apiKey) return; localStorage.setItem('gemini_api_key', apiKey); }
+            const btn = document.getElementById('ai-btn'), resDiv = document.getElementById('ai-result');
+            btn.disabled = true; btn.innerText = "Elaborazione..."; resDiv.innerHTML = "<p><em>Lettura dati in corso...</em></p>";
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: promptText }] }]
-                    })
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({contents: [{parts: [{text: `Analizza questi dati estratti oggi:\n\n${document.getElementById('raw-data').innerText}\n\nFornisci un'analisi sintetica in HTML (usa solo <h3>, <ul>, <li>, <b>). Nessun blocco markdown.`}]}]})
                 });
-
-                if (!response.ok) {
-                    if(response.status === 400 || response.status === 403) {
-                        localStorage.removeItem('gemini_api_key');
-                        throw new Error("La chiave API non è valida. Riprova.");
-                    }
-                    throw new Error("Errore API Google: " + response.status);
-                }
-
-                const data = await response.json();
-                let htmlContent = data.candidates[0].content.parts[0].text;
-                htmlContent = htmlContent.replace(/```html/gi, '').replace(/```/g, '').trim();
-                
-                resultDiv.innerHTML = htmlContent;
-            } catch (error) {
-                resultDiv.innerHTML = `<p class="error">Si è verificato un errore: ${error.message}</p>`;
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Rigenera Analisi";
-            }
+                if (!res.ok) throw new Error("Errore Google API: " + res.status);
+                const data = await res.json();
+                resDiv.innerHTML = data.candidates[0].content.parts[0].text.replace(/```html/gi, '').replace(/```/g, '');
+            } catch (e) { resDiv.innerHTML = `<p class="error">${e.message}</p>`; } 
+            finally { btn.disabled = false; btn.innerText = "Rigenera Analisi"; }
         }
     </script>
 </body>
