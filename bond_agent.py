@@ -1,17 +1,16 @@
 import os
 import sys
 import subprocess
-import re
 from datetime import datetime
 
 # ==========================================
 # 0. AUTO-INSTALLAZIONE DIPENDENZE
 # ==========================================
 def install_dependencies():
-    packages = ["pandas", "yfinance", "beautifulsoup4", "requests"]
+    packages = ["pandas", "yfinance", "requests"]
     for pip_name in packages:
         try:
-            __import__(pip_name if pip_name != "beautifulsoup4" else "bs4")
+            __import__(pip_name)
         except ImportError:
             print(f"[*] Installazione di {pip_name} in corso...")
             subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name, "--quiet"])
@@ -21,113 +20,12 @@ install_dependencies()
 import pandas as pd
 import yfinance as yf
 import requests
-from bs4 import BeautifulSoup
 
 # ==========================================
-# 1. SCRAPER UNIVERSALE (5 Motori di Ricerca)
-# ==========================================
-def clean_price(value_str):
-    """Estrae e converte formati di prezzo misti europei in float."""
-    try:
-        val = str(value_str).split()[0].replace('%', '').replace('G', '').replace('B', '').replace('€', '').strip()
-        if not val or val == '-': return None
-        return float(val.replace('.', '').replace(',', '.'))
-    except (ValueError, AttributeError, IndexError):
-        return None
-
-def get_isin_prices(isin):
-    """Cerca il prezzo a cascata su 5 portali finanziari europei."""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept-Language": "it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7"
-    }
-    
-    ultimo = None
-    chiusura = None
-
-    # 1. ARIVA.DE (Il database più completo per i bond XS e FR)
-    try:
-        url = f"https://www.ariva.de/{isin}/kurs"
-        res = requests.get(url, headers=headers, timeout=5)
-        if res.status_code == 200:
-            soup = BeautifulSoup(res.text, 'html.parser')
-            price_tag = soup.find('span', itemprop='price')
-            if price_tag:
-                ultimo = clean_price(price_tag.text)
-            
-            vortag_th = soup.find('th', string=re.compile("Vortag", re.I))
-            if vortag_th and vortag_th.find_next_sibling('td'):
-                chiusura = clean_price(vortag_th.find_next_sibling('td').text)
-                
-            if ultimo: return ultimo, (chiusura or ultimo)
-    except Exception: pass
-
-    # 2. FINANZEN.NET (Colosso tedesco per corporate bond)
-    try:
-        url = f"https://www.finanzen.net/anleihen/{isin}"
-        res = requests.get(url, headers=headers, timeout=5)
-        if res.status_code == 200:
-            soup = BeautifulSoup(res.text, 'html.parser')
-            parts = soup.get_text(separator='|', strip=True).lower().split('|')
-            for i, part in enumerate(parts):
-                if part == "aktuell" or "brief" in part:
-                    for offset in range(1, 4):
-                        if i + offset < len(parts):
-                            val = re.sub(r'[^\d,]', '', parts[i + offset])
-                            if val and ',' in val:
-                                ultimo = clean_price(val)
-                                break
-                if "vortag" in part or "schluss" in part:
-                    for offset in range(1, 4):
-                        if i + offset < len(parts):
-                            val = re.sub(r'[^\d,]', '', parts[i + offset])
-                            if val and ',' in val:
-                                chiusura = clean_price(val)
-                                break
-            if ultimo: return ultimo, (chiusura or ultimo)
-    except Exception: pass
-
-    # 3. TRADEGATE (Eccellente per i titoli scambiati su Xetra)
-    try:
-        url = f"https://www.tradegate.de/orderbuch.php?isin={isin}"
-        res = requests.get(url, headers=headers, timeout=5)
-        if res.status_code == 200:
-            soup = BeautifulSoup(res.text, 'html.parser')
-            ult_tag = soup.find(id='last')
-            chiu_tag = soup.find(id='close')
-            if ult_tag and ult_tag.text.strip():
-                ultimo = clean_price(ult_tag.text)
-            if chiu_tag and chiu_tag.text.strip():
-                chiusura = clean_price(chiu_tag.text)
-            if ultimo: return ultimo, (chiusura or ultimo)
-    except Exception: pass
-
-    # 4. BORSA ITALIANA & 5. TELEBORSA (Per BTP e bond retail IT)
-    segments = ["mot/obbligazioni-corporate", "eurotlx/obbligazioni", "mot/euro-obbligazioni"]
-    for segment in segments:
-        try:
-            url = f"https://www.borsaitaliana.it/borsa/obbligazioni/{segment}/scheda/{isin}.html"
-            res = requests.get(url, headers=headers, timeout=5)
-            if res.status_code == 200 and isin in res.text:
-                soup = BeautifulSoup(res.text, 'html.parser')
-                parts = soup.get_text(separator='|', strip=True).lower().split('|')
-                for i, part in enumerate(parts):
-                    if "ultimo contratto" in part or part == "ultimo":
-                        val = re.sub(r'[^\d,]', '', parts[i + 2])
-                        if val: ultimo = clean_price(val)
-                    if "chiusura precedente" in part:
-                        val = re.sub(r'[^\d,]', '', parts[i + 2])
-                        if val: chiusura = clean_price(val)
-                if ultimo: return ultimo, (chiusura or ultimo)
-        except Exception: pass
-
-    return None, None
-
-
-# ==========================================
-# 2. RACCOLTA DATI 
+# 1. RACCOLTA DATI (YFinance + EODHD API)
 # ==========================================
 def fetch_bond_data():
+    # Benchmark Macro tramite YFinance (Non consuma crediti EODHD)
     tickers_macro = {"US 10Y Yield": "^TNX", "US 2Y Yield": "^IRX", "US 30Y Yield": "^TYX"}
     macro_data = []
     for name, ticker in tickers_macro.items():
@@ -146,6 +44,7 @@ def fetch_bond_data():
             
     df_macro = pd.DataFrame(macro_data)
 
+    # Shortlist Personalizzata 
     portfolio_list = [
         {"Isin": "XS3358330820", "Nome": "Enel S.p.A. 3.875% 2033"},
         {"Isin": "XS2655852726", "Nome": "Terna S.p.A. 3.875% 2033"},
@@ -159,17 +58,41 @@ def fetch_bond_data():
         {"Isin": "FR0014016SW6", "Nome": "Sanofi 2.000%"}
     ]
     
-    print("[*] Avvio scraping prezzi in tempo reale sui circuiti internazionali...")
+    eodhd_key = os.environ.get("EODHD_API_KEY")
+    if not eodhd_key:
+        print("[!] ATTENZIONE: EODHD_API_KEY non trovata nei secret di GitHub.")
+    
+    print("[*] Chiamata API EODHD per i corporate bond europei...")
     portfolio_data = []
+    
     for bond in portfolio_list:
-        print(f"    -> Ricerca {bond['Nome']} ({bond['Isin']})...")
-        prezzo_oggi, prezzo_ieri = get_isin_prices(bond["Isin"])
+        prezzo_oggi, prezzo_ieri = None, None
+        
+        if eodhd_key:
+            # EODHD mappa i corporate europei principalmente su Francoforte (.F)
+            url = f"https://eodhd.com/api/real-time/{bond['Isin']}.F?api_token={eodhd_key}&fmt=json"
+            try:
+                res = requests.get(url, timeout=10)
+                if res.status_code == 200:
+                    data = res.json()
+                    # Il campo "close" è l'ultimo prezzo aggiornato, "previousClose" è la chiusura ufficiale precedente
+                    val_oggi = data.get("close", 0)
+                    val_ieri = data.get("previousClose", 0)
+                    if val_oggi != "NA" and float(val_oggi) > 0:
+                        prezzo_oggi = float(val_oggi)
+                    if val_ieri != "NA" and float(val_ieri) > 0:
+                        prezzo_ieri = float(val_ieri)
+            except Exception as e:
+                print(f"    [X] Errore API per {bond['Isin']}: {e}")
         
         if prezzo_oggi:
             bond["Prezzo (€)"] = f"{prezzo_oggi:.2f}"
-            bond["Chiusura Prec. (€)"] = f"{prezzo_ieri:.2f}"
-            variazione_perc = ((prezzo_oggi - prezzo_ieri) / prezzo_ieri) * 100 if prezzo_ieri else 0
-            bond["Variazione (%)"] = f"{variazione_perc:+.2f}%"
+            bond["Chiusura Prec. (€)"] = f"{prezzo_ieri:.2f}" if prezzo_ieri else "N/D"
+            if prezzo_ieri:
+                variazione_perc = ((prezzo_oggi - prezzo_ieri) / prezzo_ieri) * 100
+                bond["Variazione (%)"] = f"{variazione_perc:+.2f}%"
+            else:
+                bond["Variazione (%)"] = "N/D"
         else:
             bond["Prezzo (€)"] = "N/D"
             bond["Chiusura Prec. (€)"] = "N/D"
@@ -183,13 +106,12 @@ def fetch_bond_data():
 
     return df_macro, df_portfolio
 
-
 # ==========================================
-# 3. GENERAZIONE DASHBOARD HTML + JS
+# 2. GENERAZIONE DASHBOARD HTML + JS
 # ==========================================
 def generate_html_page(df_macro, df_portfolio):
     timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    html_macro = df_macro.to_html(index=False, classes="data-table", justify="left") if not df_macro.empty else "<p>Dati non disponibili</p>"
+    html_macro = df_macro.to_html(index=False, classes="data-table", justify="left") if not df_macro.empty else "<p>Dati Macro non disponibili</p>"
     html_portfolio = df_portfolio.to_html(index=False, classes="data-table", justify="left")
     raw_text = f"BENCHMARK:\n{df_macro.to_string(index=False)}\n\nPORTAFOGLIO:\n{df_portfolio.to_string(index=False)}"
 
@@ -217,26 +139,26 @@ def generate_html_page(df_macro, df_portfolio):
 </head>
 <body>
     <h1>Dashboard Bond Monitor</h1>
-    <div class="timestamp">Dati aggiornati al: {timestamp}</div>
+    <div class="timestamp">Dati API aggiornati al: {timestamp}</div>
     <h2>Rendimenti Macro</h2>{html_macro}
-    <h2>Shortlist Corporate (Copertura Internazionale)</h2>{html_portfolio}
+    <h2>Shortlist Corporate (Copertura Ufficiale Xetra/EODHD)</h2>{html_portfolio}
     <div class="ai-panel">
         <h2>Genera Analisi</h2>
         <button id="ai-btn" onclick="generateAnalysis()">Elabora Dati con Gemini</button>
-        <button onclick="localStorage.removeItem('gemini_api_key'); alert('Chiave rimossa.');" style="background:none;border:none;color:#666;text-decoration:underline;cursor:pointer;margin-left:15px;">Reset API Key</button>
+        <button onclick="localStorage.removeItem('gemini_api_key'); alert('Chiave Gemini rimossa.');" style="background:none;border:none;color:#666;text-decoration:underline;cursor:pointer;margin-left:15px;">Reset API Key Gemini</button>
         <div id="ai-result"></div>
     </div>
     <pre id="raw-data" style="display:none;">{raw_text}</pre>
     <script>
         async function generateAnalysis() {{
             let apiKey = localStorage.getItem('gemini_api_key');
-            if (!apiKey) {{ apiKey = prompt("API Key Gemini:"); if (!apiKey) return; localStorage.setItem('gemini_api_key', apiKey); }}
+            if (!apiKey) {{ apiKey = prompt("Inserisci la tua API Key Gemini (viene salvata solo nel browser):"); if (!apiKey) return; localStorage.setItem('gemini_api_key', apiKey); }}
             const btn = document.getElementById('ai-btn'), resDiv = document.getElementById('ai-result');
-            btn.disabled = true; btn.innerText = "Elaborazione..."; resDiv.innerHTML = "<p><em>Lettura dati in corso...</em></p>";
+            btn.disabled = true; btn.innerText = "Elaborazione in corso..."; resDiv.innerHTML = "<p><em>Lettura dati oracolo in corso...</em></p>";
             try {{
                 const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{apiKey}}`, {{
                     method: 'POST', headers: {{'Content-Type': 'application/json'}},
-                    body: JSON.stringify({{contents: [{{parts: [{{text: `Analizza questi dati estratti oggi:\\n\\n${{document.getElementById('raw-data').innerText}}\\n\\nFornisci un'analisi sintetica in HTML (usa solo <h3>, <ul>, <li>, <b>). Nessun blocco markdown.`}}]}}]}})
+                    body: JSON.stringify({{contents: [{{parts: [{{text: `Sei un analista obbligazionario. Analizza questi dati estratti oggi:\\n\\n${{document.getElementById('raw-data').innerText}}\\n\\nFornisci un'analisi sintetica in HTML (usa solo <h3>, <ul>, <li>, <b>). Nessun blocco markdown.`}}]}}]}})
                 }});
                 if (!res.ok) throw new Error("Errore Google API: " + res.status);
                 const data = await res.json();
@@ -248,7 +170,7 @@ def generate_html_page(df_macro, df_portfolio):
 </body>
 </html>"""
     with open("index.html", "w", encoding="utf-8") as f: f.write(html_template)
-    print("[*] Dashboard aggiornata in index.html!")
+    print("[*] Dashboard API salvata in index.html!")
 
 if __name__ == "__main__":
     macro, port = fetch_bond_data()
