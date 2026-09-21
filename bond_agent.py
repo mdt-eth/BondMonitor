@@ -7,10 +7,10 @@ from datetime import datetime
 # 0. AUTO-INSTALLAZIONE DIPENDENZE
 # ==========================================
 def install_dependencies():
-    packages = ["pandas", "yfinance"] # google-genai non serve più in Python!
+    packages = ["pandas", "yfinance", "beautifulsoup4", "lxml", "requests"]
     for pip_name in packages:
         try:
-            __import__(pip_name)
+            __import__(pip_name if pip_name != "beautifulsoup4" else "bs4")
         except ImportError:
             print(f"[*] Installazione di {pip_name} in corso...")
             subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name, "--quiet"])
@@ -19,12 +19,67 @@ install_dependencies()
 
 import pandas as pd
 import yfinance as yf
+import requests
 
 # ==========================================
-# 1. RACCOLTA DATI OBBLIGAZIONARI 
+# 1. SCRAPER BORSA ITALIANA
+# ==========================================
+def clean_price(value_str):
+    """Pulisce le stringhe di prezzo italiane (es. '98,50' o '1.005,20') in float Python."""
+    try:
+        # Prende solo il primo elemento se ci sono orari o valute appese
+        val = str(value_str).split()[0] 
+        return float(val.replace('.', '').replace(',', '.'))
+    except (ValueError, AttributeError):
+        return None
+
+def get_isin_prices(isin):
+    """Cerca l'ISIN nei vari segmenti di Borsa Italiana ed estrae i prezzi."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    
+    # I bond possono risiedere in segmenti diversi del sito
+    segments = [
+        "mot/btp", 
+        "mot/obbligazioni-corporate", 
+        "mot/euro-obbligazioni", 
+        "eurotlx/obbligazioni"
+    ]
+    
+    for segment in segments:
+        url = f"https://www.borsaitaliana.it/borsa/obbligazioni/{segment}/scheda/{isin}.html"
+        try:
+            response = requests.get(url, headers=headers, timeout=5)
+            if response.status_code == 200 and "Prezzo" in response.text:
+                # Estrae tutte le tabelle HTML dalla pagina
+                tables = pd.read_html(response.text, flavor='bs4')
+                
+                ultimo = None
+                chiusura = None
+                
+                # Cerca i valori nelle tabelle
+                for df in tables:
+                    for _, row in df.iterrows():
+                        label = str(row.iloc[0]).lower()
+                        if "ultimo contratto" in label or label == "ultimo":
+                            ultimo = clean_price(row.iloc[1])
+                        if "chiusura precedente" in label or "prezzo di riferimento" in label:
+                            chiusura = clean_price(row.iloc[1])
+                            
+                if ultimo and chiusura:
+                    return ultimo, chiusura
+        except Exception:
+            continue
+            
+    return None, None
+
+
+# ==========================================
+# 2. RACCOLTA DATI MISTA (YFINANCE + SCRAPER)
 # ==========================================
 def fetch_bond_data():
-    # Benchmark Macro
+    # Benchmark Macro tramite yfinance (i tassi non sono ISIN)
     tickers_macro = {
         "US 10Y Yield": "^TNX",
         "US 2Y Yield": "^IRX",
@@ -49,38 +104,48 @@ def fetch_bond_data():
             
     df_macro = pd.DataFrame(macro_data)
 
-    # Shortlist Portafoglio 
-    # Nota: su yfinance alcuni BTP non hanno ticker perfetti, usiamo dati proxy 
-        # Shortlist Portafoglio (Sovereign + Corporate)
-    portfolio = [
-        {"Isin": "IT0005436693", "Nome": "BTP 0.95% Mar 2037", "Prezzo": 68.50, "Chiusura Prec.": 68.10, "Duration": 11.2, "Rating": "BBB"},
-        {"Isin": "DE0001102580", "Nome": "Bund 0.0% Feb 2032", "Prezzo": 79.20, "Chiusura Prec.": 79.45, "Duration": 7.8, "Rating": "AAA"},
-        {"Isin": "XS2345678901", "Nome": "Corp High Yield 5.5% 2029", "Prezzo": 98.10, "Chiusura Prec.": 98.40, "Duration": 4.1, "Rating": "BB+"},
-        {"Isin": "XS2123456789", "Nome": "Intesa Sanpaolo 2.1% 2027", "Prezzo": 95.30, "Chiusura Prec.": 95.10, "Duration": 3.2, "Rating": "BBB"},
-        {"Isin": "XS1890123456", "Nome": "Enel Finance 1.5% 2028", "Prezzo": 92.80, "Chiusura Prec.": 92.65, "Duration": 4.5, "Rating": "BBB+"},
+    # Shortlist Portafoglio: Scrape in tempo reale degli ISIN su Borsa Italiana
+    portfolio_list = [
+        {"Isin": "IT0005436693", "Nome": "BTP 0.95% Mar 2037", "Duration": 11.2, "Rating": "BBB"},
+        {"Isin": "DE0001102580", "Nome": "Bund 0.0% Feb 2032", "Duration": 7.8, "Rating": "AAA"},
+        {"Isin": "XS2345678901", "Nome": "Corp High Yield 5.5%", "Duration": 4.1, "Rating": "BB+"},
+        {"Isin": "XS2123456789", "Nome": "Intesa Sanpaolo 2.1%", "Duration": 3.2, "Rating": "BBB"},
+        {"Isin": "XS1890123456", "Nome": "Enel Finance 1.5%", "Duration": 4.5, "Rating": "BBB+"},
     ]
     
-    df_portfolio = pd.DataFrame(portfolio)
-    # Calcolo variazione % per il portafoglio
-    df_portfolio["Variazione (%)"] = ((df_portfolio["Prezzo"] - df_portfolio["Chiusura Prec."]) / df_portfolio["Chiusura Prec."] * 100).apply(lambda x: f"{x:+.2f}%")
+    print("[*] Avvio scraping prezzi in tempo reale da Borsa Italiana...")
+    portfolio_data = []
+    for bond in portfolio_list:
+        print(f"    -> Ricerca {bond['Nome']} ({bond['Isin']})...")
+        prezzo_oggi, prezzo_ieri = get_isin_prices(bond["Isin"])
+        
+        if prezzo_oggi and prezzo_ieri:
+            bond["Prezzo (€)"] = prezzo_oggi
+            bond["Chiusura Prec. (€)"] = prezzo_ieri
+            variazione_perc = ((prezzo_oggi - prezzo_ieri) / prezzo_ieri) * 100
+            bond["Variazione (%)"] = f"{variazione_perc:+.2f}%"
+        else:
+            bond["Prezzo (€)"] = "N/D"
+            bond["Chiusura Prec. (€)"] = "N/D"
+            bond["Variazione (%)"] = "N/D"
+            
+        portfolio_data.append(bond)
     
-    # Riordino le colonne per chiarezza
-    cols = ["Isin", "Nome", "Prezzo", "Chiusura Prec.", "Variazione (%)", "Duration", "Rating"]
+    df_portfolio = pd.DataFrame(portfolio_data)
+    cols = ["Isin", "Nome", "Prezzo (€)", "Chiusura Prec. (€)", "Variazione (%)", "Duration", "Rating"]
     df_portfolio = df_portfolio[cols]
 
     return df_macro, df_portfolio
 
 # ==========================================
-# 2. GENERAZIONE DASHBOARD HTML + JS
+# 3. GENERAZIONE DASHBOARD HTML + JS
 # ==========================================
 def generate_html_page(df_macro, df_portfolio):
     timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     
-    # Convertiamo i DataFrame in tabelle HTML pulite
     html_macro = df_macro.to_html(index=False, classes="data-table", justify="left") if not df_macro.empty else "<p>Dati non disponibili</p>"
     html_portfolio = df_portfolio.to_html(index=False, classes="data-table", justify="left")
     
-    # Il testo grezzo che verrà inviato a Gemini dal Javascript
     raw_text_for_prompt = f"BENCHMARK:\n{df_macro.to_string(index=False)}\n\nPORTAFOGLIO:\n{df_portfolio.to_string(index=False)}"
 
     html_template = f"""<!DOCTYPE html>
@@ -116,10 +181,9 @@ def generate_html_page(df_macro, df_portfolio):
     <h2>Dati Macro (Benchmark)</h2>
     {html_macro}
     
-    <h2>Shortlist Portafoglio</h2>
+    <h2>Shortlist Portafoglio (Prezzi Reali Live)</h2>
     {html_portfolio}
 
-    <!-- Sezione AI Generativa Client-Side -->
     <div class="ai-panel">
         <h2>Analisi Smart</h2>
         <p>I dati sono pronti. Clicca il bottone per generare il commento tramite l'API di Gemini.</p>
@@ -129,7 +193,6 @@ def generate_html_page(df_macro, df_portfolio):
         <div id="ai-result"></div>
     </div>
 
-    <!-- Dati grezzi nascosti per il prompt JS -->
     <pre id="raw-data" style="display:none;">{raw_text_for_prompt}</pre>
 
     <script>
@@ -141,7 +204,7 @@ def generate_html_page(df_macro, df_portfolio):
         async function generateAnalysis() {{
             let apiKey = localStorage.getItem('gemini_api_key');
             if (!apiKey) {{
-                apiKey = prompt("Inserisci la tua API Key di Gemini (verrà salvata solo nel tuo browser per sicurezza, non sul server):");
+                apiKey = prompt("Inserisci la tua API Key di Gemini (verrà salvata solo nel tuo browser per sicurezza):");
                 if (!apiKey) return;
                 localStorage.setItem('gemini_api_key', apiKey);
             }}
@@ -157,7 +220,6 @@ def generate_html_page(df_macro, df_portfolio):
             const promptText = `Sei un analista obbligazionario. Analizza questi dati estratti oggi:\\n\\n${{rawData}}\\n\\nFornisci un'analisi sintetica strutturata. FORMATTA LA TUA RISPOSTA IN HTML (usa i tag <h3>, <ul>, <li>, <b>). Non includere markdown come \`\`\`html.`;
 
             try {{
-                // Chiamata REST diretta ai server Google dal browser
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{apiKey}}`, {{
                     method: 'POST',
                     headers: {{ 'Content-Type': 'application/json' }},
@@ -169,7 +231,7 @@ def generate_html_page(df_macro, df_portfolio):
                 if (!response.ok) {{
                     if(response.status === 400 || response.status === 403) {{
                         localStorage.removeItem('gemini_api_key');
-                        throw new Error("La chiave API non è valida o non ha i permessi. La chiave è stata rimossa, riprova.");
+                        throw new Error("La chiave API non è valida o non ha i permessi. Riprova.");
                     }}
                     throw new Error("Errore API dal server Google: " + response.status);
                 }}
