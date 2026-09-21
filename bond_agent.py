@@ -22,64 +22,6 @@ import yfinance as yf
 import requests
 
 # ==========================================
-# 1. RACCOLTA DATI (YFinance + EODHD API)
-# ==========================================
-def fetch_bond_data():
-    # Benchmark Macro tramite YFinance (Non consuma crediti EODHD)
-    tickers_macro = {"US 10Y Yield": "^TNX", "US 2Y Yield": "^IRX", "US 30Y Yield": "^TYX"}
-    macro_data = []
-    for name, ticker in tickers_macro.items():
-        try:
-            data = yf.Ticker(ticker).history(period="5d")
-            if not data.empty:
-                current_yield = data["Close"].iloc[-1]
-                prev_yield = data["Close"].iloc[-2]
-                macro_data.append({
-                    "Benchmark": name,
-                    "Rendimento (%)": f"{current_yield:.2f}%",
-                    "Chiusura Prec. (%)": f"{prev_yield:.2f}%",
-                    "Variazione (bp)": f"{(current_yield - prev_yield) * 100:+.1f}"
-                })
-        except Exception: pass
-            
-    df_macro = pd.DataFrame(macro_data)
-
-    # Shortlist Personalizzata 
-    portfolio_list = [
-        {"Isin": "XS3358330820", "Nome": "Enel S.p.A. 3.875% 2033"},
-        {"Isin": "XS2655852726", "Nome": "Terna S.p.A. 3.875% 2033"},
-        {"Isin": "XS3171591889", "Nome": "E.ON 3.000% 2031"},
-        {"Isin": "FR001400AF72", "Nome": "Orange S.A. 2.375% 2032"},
-        {"Isin": "DE000A2TSDE2", "Nome": "Deutsche Telekom 1.750% 2031"},
-        {"Isin": "XS2450200741", "Nome": "Unilever 1.250% 2031"},
-        {"Isin": "XS2455983861", "Nome": "Iberdrola 1.375% 2032"},
-        {"Isin": "FR001400OJB9", "Nome": "Engie S.A. 3.625% 2031"},
-        {"Isin": "BE6248644013", "Nome": "AB InBev 3.250% 2033"},
-        {"Isin": "FR0014016SW6", "Nome": "Sanofi 2.000%"}
-    ]
-    
-    eodhd_key = os.environ.get("EODHD_API_KEY")
-    if not eodhd_key:
-        print("[!] ATTENZIONE: EODHD_API_KEY non trovata nei secret di GitHub.")
-    
-    print("[*] Chiamata API EODHD per i corporate bond europei...")
-    portfolio_data = []
-    
-    for bond in portfolio_list:
-        prezzo_oggi, prezzo_ieri = None, None
-        
-        if eodhd_key:
-            # EODHD mappa i corporate europei principalmente su Francoforte (.F)
-            url = f"https://eodhd.com/api/real-time/{bond['Isin']}.F?api_token={eodhd_key}&fmt=json"
-            try:
-                res = requests.get(url, timeout=10)
-                if res.status_code == 200:
-                    data = res.json()
-                    # Il campo "close" è l'ultimo prezzo aggiornato, "previousClose" è la chiusura ufficiale precedente
-                    val_oggi = data.get("close", 0)
-
-
-# ==========================================
 # 1. RACCOLTA DATI (YFinance + EODHD API Avanzato)
 # ==========================================
 def fetch_bond_data():
@@ -113,7 +55,7 @@ def fetch_bond_data():
         {"Isin": "XS2455983861", "Nome": "Iberdrola 1.375% 2032"},
         {"Isin": "FR001400OJB9", "Nome": "Engie S.A. 3.625% 2031"},
         {"Isin": "BE6248644013", "Nome": "AB InBev 3.250% 2033"},
-        {"Isin": "FR0014016SW6", "Nome": "Sanofi 2.000%"}
+        {"Isin": "FR0014016SW6", "Nome": "Sanofi 3.375 2033%"}
     ]
     
     eodhd_key = os.environ.get("EODHD_API_KEY")
@@ -143,11 +85,11 @@ def fetch_bond_data():
                             prezzo_ieri = float(val_ieri) if val_ieri != "NA" else None
                             print(f"    -> {bond['Nome']}: TROVATO sul listino .{suffix}")
                             trovato = True
-                            break # Trovato il prezzo, ferma la ricerca per questo ISIN
+                            break
                     elif res.status_code == 403:
-                        print(f"    -> [ERRORE 403] API Key non valida o permessi negati.")
-                        break # Inutile riprovare se la chiave è respinta
-                except Exception as e:
+                        print(f"    -> [ERRORE 403] API Key EODHD non valida o permessi negati.")
+                        break
+                except Exception:
                     pass
             
             if not trovato:
@@ -173,6 +115,7 @@ def fetch_bond_data():
     df_portfolio = df_portfolio[cols]
 
     return df_macro, df_portfolio
+
 
 # ==========================================
 # 2. GENERAZIONE DASHBOARD HTML + JS
@@ -209,7 +152,7 @@ def generate_html_page(df_macro, df_portfolio):
     <h1>Dashboard Bond Monitor</h1>
     <div class="timestamp">Dati API aggiornati al: {timestamp}</div>
     <h2>Rendimenti Macro</h2>{html_macro}
-    <h2>Shortlist Corporate (Copertura Ufficiale Xetra/EODHD)</h2>{html_portfolio}
+    <h2>Shortlist Corporate (Copertura Ufficiale EODHD)</h2>{html_portfolio}
     <div class="ai-panel">
         <h2>Genera Analisi</h2>
         <button id="ai-btn" onclick="generateAnalysis()">Elabora Dati con Gemini</button>
@@ -236,8 +179,10 @@ def generate_html_page(df_macro, df_portfolio):
         }}
     </script>
 </body>
-</html>"""
-    with open("index.html", "w", encoding="utf-8") as f: f.write(html_template)
+</html>
+"""
+    with open("index.html", "w", encoding="utf-8") as f:
+        f.write(html_template)
     print("[*] Dashboard API salvata in index.html!")
 
 if __name__ == "__main__":
