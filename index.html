@@ -5,30 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bond Monitor Dashboard</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 900px; margin: auto; color: #333; line-height: 1.5; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 950px; margin: auto; color: #333; line-height: 1.5; background-color: #fcfcfc; }
         h1 { color: #004494; border-bottom: 2px solid #004494; padding-bottom: 10px; }
         h2 { color: #0056b3; font-size: 1.2em; margin-top: 30px; }
         .timestamp { color: #777; font-size: 0.9em; margin-bottom: 20px; font-style: italic; }
         
-        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.95em; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .data-table th, .data-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.95em; box-shadow: 0 1px 3px rgba(0,0,0,0.1); background: white; }
+        .data-table th, .data-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
         .data-table th { background-color: #f4f6f8; font-weight: bold; color: #333; }
-        .data-table tr:nth-child(even) { background-color: #fcfcfc; }
+        .data-table tr:nth-child(even) { background-color: #f9f9f9; }
         
-        .ai-panel { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-top: 30px; }
-        #ai-btn { background-color: #004494; color: white; border: none; padding: 10px 20px; font-size: 1em; border-radius: 5px; cursor: pointer; transition: background 0.3s; }
+        .ai-panel { background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 25px; margin-top: 35px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        #ai-btn { background-color: #004494; color: white; border: none; padding: 12px 24px; font-size: 1em; border-radius: 6px; cursor: pointer; transition: background 0.3s; font-weight: bold; }
         #ai-btn:hover { background-color: #003370; }
         #ai-btn:disabled { background-color: #999; cursor: not-allowed; }
         
-        #ai-result { margin-top: 20px; padding-top: 15px; border-top: 1px dashed #ccc; }
-        .error { color: #d9534f; font-weight: bold; }
+        #ai-result { margin-top: 25px; padding-top: 20px; border-top: 1px dashed #ccc; }
+        .error { color: #d9534f; font-weight: bold; padding: 10px; border-left: 4px solid #d9534f; background: #fdf2f2; }
     </style>
 </head>
 <body>
     <h1>Dashboard Bond Monitor</h1>
-    <div class="timestamp">Dati aggiornati al: 21/09/2026 21:39:43</div>
+    <div class="timestamp">Dati raccolti in tempo reale il: 21/09/2026 21:52:45</div>
     
-    <h2>Dati Macro (Benchmark)</h2>
+    <h2>Rendimenti Macro (Benchmark)</h2>
     <table border="1" class="dataframe data-table">
   <thead>
     <tr style="text-align: left;">
@@ -60,7 +60,7 @@
   </tbody>
 </table>
     
-    <h2>Shortlist Portafoglio (Prezzi Reali Live)</h2>
+    <h2>Shortlist Portafoglio (Corporate & Sovereign)</h2>
     <table border="1" class="dataframe data-table">
   <thead>
     <tr style="text-align: left;">
@@ -69,64 +69,87 @@
       <th>Prezzo (€)</th>
       <th>Chiusura Prec. (€)</th>
       <th>Variazione (%)</th>
-      <th>Duration</th>
-      <th>Rating</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>IT0005436693</td>
-      <td>BTP 0.95% Mar 2037</td>
+      <td>XS3358330820</td>
+      <td>Enel S.p.A. 3.875% 2033</td>
       <td>N/D</td>
       <td>N/D</td>
       <td>N/D</td>
-      <td>11.2</td>
-      <td>BBB</td>
     </tr>
     <tr>
-      <td>DE0001102580</td>
-      <td>Bund 0.0% Feb 2032</td>
+      <td>XS2655852726</td>
+      <td>Terna S.p.A. 3.875% 2033</td>
       <td>N/D</td>
       <td>N/D</td>
       <td>N/D</td>
-      <td>7.8</td>
-      <td>AAA</td>
     </tr>
     <tr>
-      <td>XS2345678901</td>
-      <td>Corp High Yield 5.5%</td>
+      <td>XS3171591889</td>
+      <td>E.ON 3.000% 2031</td>
       <td>N/D</td>
       <td>N/D</td>
       <td>N/D</td>
-      <td>4.1</td>
-      <td>BB+</td>
     </tr>
     <tr>
-      <td>XS2123456789</td>
-      <td>Intesa Sanpaolo 2.1%</td>
+      <td>FR001400AF72</td>
+      <td>Orange S.A. 2.375% 2032</td>
       <td>N/D</td>
       <td>N/D</td>
       <td>N/D</td>
-      <td>3.2</td>
-      <td>BBB</td>
     </tr>
     <tr>
-      <td>XS1890123456</td>
-      <td>Enel Finance 1.5%</td>
+      <td>DE000A2TSDE2</td>
+      <td>Deutsche Telekom 1.750% 2031</td>
+      <td>92.25</td>
+      <td>92.19</td>
+      <td>+0.07%</td>
+    </tr>
+    <tr>
+      <td>XS2450200741</td>
+      <td>Unilever 1.250% 2031</td>
       <td>N/D</td>
       <td>N/D</td>
       <td>N/D</td>
-      <td>4.5</td>
-      <td>BBB+</td>
+    </tr>
+    <tr>
+      <td>XS2455983861</td>
+      <td>Iberdrola 1.375% 2032</td>
+      <td>N/D</td>
+      <td>N/D</td>
+      <td>N/D</td>
+    </tr>
+    <tr>
+      <td>FR001400OJB9</td>
+      <td>Engie S.A. 3.625% 2031</td>
+      <td>N/D</td>
+      <td>N/D</td>
+      <td>N/D</td>
+    </tr>
+    <tr>
+      <td>BE6248644013</td>
+      <td>AB InBev 3.250% 2033</td>
+      <td>N/D</td>
+      <td>N/D</td>
+      <td>N/D</td>
+    </tr>
+    <tr>
+      <td>FR0014016SW6</td>
+      <td>Sanofi 2.000% (?) (Stima)</td>
+      <td>N/D</td>
+      <td>N/D</td>
+      <td>N/D</td>
     </tr>
   </tbody>
 </table>
 
     <div class="ai-panel">
-        <h2>Analisi Smart</h2>
-        <p>I dati sono pronti. Clicca il bottone per generare il commento tramite l'API di Gemini.</p>
-        <button id="ai-btn" onclick="generateAnalysis()">Genera Analisi con AI</button>
-        <button id="reset-key-btn" onclick="resetApiKey()" style="background:none; border:none; color:#666; text-decoration:underline; font-size:0.8em; cursor:pointer; margin-left:15px;">Cambia API Key</button>
+        <h2>Genera Analisi con Gemini</h2>
+        <p>Clicca il bottone per generare il commento finanziario basato sulle chiusure odierne.</p>
+        <button id="ai-btn" onclick="generateAnalysis()">Elabora Dati</button>
+        <button id="reset-key-btn" onclick="resetApiKey()" style="background:none; border:none; color:#666; text-decoration:underline; font-size:0.8em; cursor:pointer; margin-left:15px;">Aggiorna API Key</button>
         
         <div id="ai-result"></div>
     </div>
@@ -138,23 +161,28 @@ US 10Y Yield          4.96%              5.00%            -3.5
 US 30Y Yield          5.30%              5.33%            -3.5
 
 PORTAFOGLIO:
-        Isin                 Nome Prezzo (€) Chiusura Prec. (€) Variazione (%)  Duration Rating
-IT0005436693   BTP 0.95% Mar 2037        N/D                N/D            N/D      11.2    BBB
-DE0001102580   Bund 0.0% Feb 2032        N/D                N/D            N/D       7.8    AAA
-XS2345678901 Corp High Yield 5.5%        N/D                N/D            N/D       4.1    BB+
-XS2123456789 Intesa Sanpaolo 2.1%        N/D                N/D            N/D       3.2    BBB
-XS1890123456    Enel Finance 1.5%        N/D                N/D            N/D       4.5   BBB+</pre>
+        Isin                         Nome Prezzo (€) Chiusura Prec. (€) Variazione (%)
+XS3358330820      Enel S.p.A. 3.875% 2033        N/D                N/D            N/D
+XS2655852726     Terna S.p.A. 3.875% 2033        N/D                N/D            N/D
+XS3171591889             E.ON 3.000% 2031        N/D                N/D            N/D
+FR001400AF72      Orange S.A. 2.375% 2032        N/D                N/D            N/D
+DE000A2TSDE2 Deutsche Telekom 1.750% 2031      92.25              92.19         +0.07%
+XS2450200741         Unilever 1.250% 2031        N/D                N/D            N/D
+XS2455983861        Iberdrola 1.375% 2032        N/D                N/D            N/D
+FR001400OJB9       Engie S.A. 3.625% 2031        N/D                N/D            N/D
+BE6248644013         AB InBev 3.250% 2033        N/D                N/D            N/D
+FR0014016SW6    Sanofi 2.000% (?) (Stima)        N/D                N/D            N/D</pre>
 
     <script>
         function resetApiKey() {
             localStorage.removeItem('gemini_api_key');
-            alert('Chiave API rimossa dal browser. Ti verrà richiesta al prossimo utilizzo.');
+            alert('Chiave API cancellata. Ti verrà richiesta al prossimo click.');
         }
 
         async function generateAnalysis() {
             let apiKey = localStorage.getItem('gemini_api_key');
             if (!apiKey) {
-                apiKey = prompt("Inserisci la tua API Key di Gemini (verrà salvata solo nel tuo browser per sicurezza):");
+                apiKey = prompt("Inserisci la tua API Key di Gemini:");
                 if (!apiKey) return;
                 localStorage.setItem('gemini_api_key', apiKey);
             }
@@ -163,11 +191,11 @@ XS1890123456    Enel Finance 1.5%        N/D                N/D            N/D  
             const resultDiv = document.getElementById('ai-result');
             
             btn.disabled = true;
-            btn.innerText = "Connessione a Gemini in corso...";
-            resultDiv.innerHTML = "<p><em>Elaborazione dell'analisi sui tassi e sui bond. Attendere...</em></p>";
+            btn.innerText = "Consultazione in corso...";
+            resultDiv.innerHTML = "<p><em>Elaborazione dell'analisi sui bond odierni...</em></p>";
 
             const rawData = document.getElementById('raw-data').innerText;
-            const promptText = `Sei un analista obbligazionario. Analizza questi dati estratti oggi:\n\n${rawData}\n\nFornisci un'analisi sintetica strutturata. FORMATTA LA TUA RISPOSTA IN HTML (usa i tag <h3>, <ul>, <li>, <b>). Non includere markdown come \`\`\`html.`;
+            const promptText = `Sei un analista obbligazionario. Analizza questi dati estratti oggi:\n\n${rawData}\n\nFornisci un'analisi sintetica. Evidenzia quali titoli hanno registrato le variazioni più interessanti. FORMATTA LA TUA RISPOSTA IN HTML (usa i tag <h3>, <ul>, <li>, <b>). Non includere markdown.`;
 
             try {
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
@@ -181,9 +209,9 @@ XS1890123456    Enel Finance 1.5%        N/D                N/D            N/D  
                 if (!response.ok) {
                     if(response.status === 400 || response.status === 403) {
                         localStorage.removeItem('gemini_api_key');
-                        throw new Error("La chiave API non è valida o non ha i permessi. Riprova.");
+                        throw new Error("La chiave API non è valida. Riprova.");
                     }
-                    throw new Error("Errore API dal server Google: " + response.status);
+                    throw new Error("Errore API Google: " + response.status);
                 }
 
                 const data = await response.json();
