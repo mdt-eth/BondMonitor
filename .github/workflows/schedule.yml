@@ -25,6 +25,7 @@ jobs:
 
       - name: Esegui Script e Genera HTML
         env:
+          EODHD_API_KEY: ${{ secrets.EODHD_API_KEY}}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: python bond_agent.py
 
