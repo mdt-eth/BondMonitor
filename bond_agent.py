@@ -6,28 +6,23 @@ import subprocess
 # 0. AUTO-INSTALLAZIONE DIPENDENZE
 # ==========================================
 def install_dependencies():
-    packages = {
-        "pandas": "pandas",
-        "yfinance": "yfinance",
-        "tabulate": "tabulate",
-        "google.genai": "google-genai"
-    }
+    packages = ["pandas", "yfinance", "tabulate", "google-genai"]
     
+    # Rimuove il vecchio pacchetto se esiste per evitare conflitti
     try:
         __import__("google.generativeai")
-        print("[*] Rimozione del pacchetto deprecato 'google-generativeai'...")
         subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "google-generativeai", "--quiet"])
     except ImportError:
         pass
 
-    for module_name, pip_name in packages.items():
+    for pip_name in packages:
         try:
-            if module_name == "google.genai":
+            if pip_name == "google-genai":
                 __import__("google.genai")
             else:
-                __import__(module_name)
+                __import__(pip_name)
         except ImportError:
-            print(f"[*] Rilevata carenza: '{pip_name}'. Installazione automatica in corso...")
+            print(f"[*] Installazione di {pip_name} in corso...")
             subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name, "--quiet"])
 
 install_dependencies()
@@ -35,10 +30,9 @@ install_dependencies()
 import pandas as pd
 import yfinance as yf
 from google import genai
-from google.genai import errors
 
 # ==========================================
-# 1. CONFIGURAZIONE & SELEZIONE MODELLO
+# 1. CONFIGURAZIONE
 # ==========================================
 API_KEY = os.environ.get("GEMINI_API_KEY")
 if not API_KEY:
@@ -46,33 +40,13 @@ if not API_KEY:
 
 client = genai.Client(api_key=API_KEY)
 
-
-def get_safest_flash_model() -> str:
-    """
-    Whitelist aggiornata alle versioni 3.x richieste dall'API.
-    """
-    preferred_models = [
-        "gemini-3.6-flash",
-        "gemini-3.5-flash",
-        "gemini-3.0-flash"
-    ]
-    
-    try:
-        available_models = [m.name.lower() for m in client.models.list()]
-        clean_available = [name.replace("models/", "") for name in available_models]
-        
-        for pref in preferred_models:
-            if pref in clean_available:
-                return pref
-    except Exception as e:
-        print(f"[*] Impossibile leggere la lista dei modelli ({e}). Uso default.")
-        
-    # Fallback esatto suggerito dall'errore dell'API
-    return "gemini-3.6-flash"
+# Bypassiamo list_models() per evitare i falsi positivi (modelli in preview che danno 404)
+# Usiamo direttamente l'ultima versione stabile suggerita dai log di Google.
+MODEL_ID = "gemini-3.6-flash"
 
 
 # ==========================================
-# 2. RACCOLTA DATI OBBLIGAZIONARI (BOND DATA)
+# 2. RACCOLTA DATI OBBLIGAZIONARI 
 # ==========================================
 def fetch_bond_yields():
     tickers = {
@@ -106,12 +80,11 @@ def fetch_bond_yields():
 
 
 # ==========================================
-# 3. ANALISI TRAMITE GEMINI (API CHAT)
+# 3. ANALISI TRAMITE GEMINI 
 # ==========================================
 def run_bond_monitor():
-    best_model_name = get_safest_flash_model()
-    print(f"[*] Modello selezionato: {best_model_name}")
-
+    print(f"[*] Inizializzazione con modello fisso: {MODEL_ID}")
+    
     macro_yields, portfolio = fetch_bond_yields()
 
     prompt = f"""
@@ -129,22 +102,14 @@ Fornisci un'analisi sintetica strutturata in:
 3. **Alert Operativi**: Eventuali segnali di criticità.
 """
 
-    print("[*] Generazione report in corso...\n")
+    print("[*] Recupero dati completato. Generazione report in corso...\n")
     try:
-        # Passaggio da generate_content a chats.create().send_message() per rispettare le nuove direttive SDK
-        chat = client.chats.create(model=best_model_name)
+        # Utilizzo della nuova API chat raccomandata
+        chat = client.chats.create(model=MODEL_ID)
         response = chat.send_message(prompt)
         print(response.text)
-    except errors.APIError as api_err:
-        if api_err.code == 404:
-            print(f"[*] Fallback d'emergenza diretto su gemini-3.6-flash...")
-            chat = client.chats.create(model="gemini-3.6-flash")
-            response = chat.send_message(prompt)
-            print(response.text)
-        else:
-            print(f"Errore API: {api_err}")
     except Exception as e:
-        print(f"Errore inaspettato durante l'analisi: {e}")
+        print(f"Errore API durante la generazione: {e}")
 
 if __name__ == "__main__":
     run_bond_monitor()
