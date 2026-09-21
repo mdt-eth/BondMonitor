@@ -7,7 +7,7 @@ from datetime import datetime
 # 0. AUTO-INSTALLAZIONE DIPENDENZE
 # ==========================================
 def install_dependencies():
-    packages = ["pandas", "yfinance", "google-genai"]
+    packages = ["pandas", "yfinance", "tabulate", "google-genai"]
     
     try:
         __import__("google.generativeai")
