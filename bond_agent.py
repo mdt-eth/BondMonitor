@@ -152,7 +152,7 @@ def fetch_bond_data():
         {"Isin": "XS2455983861", "Nome": "Iberdrola 1.375% 2032"},
         {"Isin": "FR001400OJB9", "Nome": "Engie S.A. 3.625% 2031"},
         {"Isin": "BE6248644013", "Nome": "AB InBev 3.250% 2033"},
-        {"Isin": "FR0014016SW6", "Nome": "Sanofi 2.000% (?) (Stima)"}
+        {"Isin": "FR0014016SW6", "Nome": "Sanofi 3.375% 2033"}
     ]
     
     print("[*] Avvio scraping prezzi in tempo reale...")
