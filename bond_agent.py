@@ -8,7 +8,6 @@ import subprocess
 def install_dependencies():
     packages = ["pandas", "yfinance", "tabulate", "google-genai"]
     
-    # Rimuove il vecchio pacchetto se esiste per evitare conflitti
     try:
         __import__("google.generativeai")
         subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "google-generativeai", "--quiet"])
@@ -40,8 +39,7 @@ if not API_KEY:
 
 client = genai.Client(api_key=API_KEY)
 
-# Bypassiamo list_models() per evitare i falsi positivi (modelli in preview che danno 404)
-# Usiamo direttamente l'ultima versione stabile suggerita dai log di Google.
+# Modello fisso imposto dall'aggiornamento API di Google (NESSUNA RICERCA AUTOMATICA)
 MODEL_ID = "gemini-3.6-flash"
 
 
@@ -104,7 +102,6 @@ Fornisci un'analisi sintetica strutturata in:
 
     print("[*] Recupero dati completato. Generazione report in corso...\n")
     try:
-        # Utilizzo della nuova API chat raccomandata
         chat = client.chats.create(model=MODEL_ID)
         response = chat.send_message(prompt)
         print(response.text)
