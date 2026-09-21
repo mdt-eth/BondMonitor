@@ -50,10 +50,14 @@ def fetch_bond_data():
     df_macro = pd.DataFrame(macro_data)
 
     # Shortlist Portafoglio 
-    # Nota: su yfinance alcuni BTP non hanno ticker perfetti, usiamo dati proxy o strutturati per l'esempio
+    # Nota: su yfinance alcuni BTP non hanno ticker perfetti, usiamo dati proxy 
+        # Shortlist Portafoglio (Sovereign + Corporate)
     portfolio = [
         {"Isin": "IT0005436693", "Nome": "BTP 0.95% Mar 2037", "Prezzo": 68.50, "Chiusura Prec.": 68.10, "Duration": 11.2, "Rating": "BBB"},
         {"Isin": "DE0001102580", "Nome": "Bund 0.0% Feb 2032", "Prezzo": 79.20, "Chiusura Prec.": 79.45, "Duration": 7.8, "Rating": "AAA"},
+        {"Isin": "XS2345678901", "Nome": "Corp High Yield 5.5% 2029", "Prezzo": 98.10, "Chiusura Prec.": 98.40, "Duration": 4.1, "Rating": "BB+"},
+        {"Isin": "XS2123456789", "Nome": "Intesa Sanpaolo 2.1% 2027", "Prezzo": 95.30, "Chiusura Prec.": 95.10, "Duration": 3.2, "Rating": "BBB"},
+        {"Isin": "XS1890123456", "Nome": "Enel Finance 1.5% 2028", "Prezzo": 92.80, "Chiusura Prec.": 92.65, "Duration": 4.5, "Rating": "BBB+"},
     ]
     
     df_portfolio = pd.DataFrame(portfolio)
