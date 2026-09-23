@@ -70,7 +70,6 @@ def fetch_market_data():
     for source, url in rss_feeds:
         try:
             feed = feedparser.parse(url)
-            # Prende le 4 notizie più recenti da ogni fonte
             for entry in feed.entries[:4]:
                 news_items.append({
                     "Fonte": source,
@@ -91,17 +90,14 @@ def fetch_market_data():
 def generate_html_page(df_macro, df_portfolio, df_news):
     timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     
-    # Tabelle HTML
     html_macro = df_macro.to_html(index=False, classes="data-table", justify="left") if not df_macro.empty else "<p>Dati Macro non disponibili</p>"
     html_portfolio = df_portfolio.to_html(index=False, classes="data-table", justify="left")
     
-    # Formattazione lista news per la pagina web
     html_news = "<ul class='news-list'>"
     for _, row in df_news.iterrows():
         html_news += f"<li><span class='source'>[{row['Fonte']}]</span> <a href='{row['Link']}' target='_blank'>{row['Titolo']}</a> <i>({row['Data']})</i></li>"
     html_news += "</ul>"
 
-    # Preparazione del testo puro (Prompt) da inviare a Gemini
     raw_text = f"""
 1. RENDIMENTI MACRO ODIERNI:
 {df_macro.to_string(index=False)}
@@ -176,7 +172,7 @@ def generate_html_page(df_macro, df_portfolio, df_news):
         async function generateAnalysis() {{
             let apiKey = localStorage.getItem('gemini_api_key');
             if (!apiKey) {{ 
-                apiKey = prompt("Inserisci la tua API Key di Gemini (verrà salvata in modo sicuro nel browser):"); 
+                apiKey = prompt("Inserisci la tua API Key di Gemini:"); 
                 if (!apiKey) return; 
                 localStorage.setItem('gemini_api_key', apiKey); 
             }}
@@ -200,22 +196,19 @@ FORMATTAZIONE OBBLIGATORIA: Usa ESCLUSIVAMENTE codice HTML pulito (tag <h3>, <ul
 Non inserire assolutamente il markdown \`\`\`html all'inizio o alla fine, fornisci solo i tag.`;
 
             try {{
-                // Usiamo il modello "latest" e una concatenazione sicura per l'API Key
                 const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=" + apiKey.trim();
                 const res = await fetch(url, {{
                     method: 'POST', 
-                    headers: {'Content-Type': 'application/json'},
-
+                    headers: {{'Content-Type': 'application/json'}},
                     body: JSON.stringify({{
                         contents: [{{parts: [{{text: systemPrompt}}]}}]
                     }})
                 }});
                 
-                if (!res.ok) throw new Error("Errore Google API: Controlla la tua chiave o i permessi (Stato " + res.status + ")");
+                if (!res.ok) throw new Error("Errore Google API (Stato " + res.status + "). Controlla la chiave o i permessi.");
                 
                 const data = await res.json();
                 let finalHtml = data.candidates[0].content.parts[0].text;
-                // Pulisce l'eventuale markdown
                 finalHtml = finalHtml.replace(/```html/gi, '').replace(/```/g, '').trim();
                 resDiv.innerHTML = finalHtml;
                 
