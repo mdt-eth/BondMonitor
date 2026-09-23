@@ -35,7 +35,7 @@
 </head>
 <body>
     <h1>Dashboard Market Intelligence</h1>
-    <div class="timestamp">Notizie e Benchmark aggiornati al: 23/09/2026 21:55:08</div>
+    <div class="timestamp">Notizie e Benchmark aggiornati al: 23/09/2026 22:24:07</div>
     
     <h2>1. Rendimenti Macro (Titoli di Stato USA)</h2>
     <table border="1" class="dataframe data-table">
@@ -184,7 +184,7 @@ BCE (European Central Bank)                                                     
         async function generateAnalysis() {
             let apiKey = localStorage.getItem('gemini_api_key');
             if (!apiKey) { 
-                apiKey = prompt("Inserisci la tua API Key di Gemini (verrà salvata in modo sicuro nel browser):"); 
+                apiKey = prompt("Inserisci la tua API Key di Gemini:"); 
                 if (!apiKey) return; 
                 localStorage.setItem('gemini_api_key', apiKey); 
             }
@@ -208,7 +208,8 @@ FORMATTAZIONE OBBLIGATORIA: Usa ESCLUSIVAMENTE codice HTML pulito (tag <h3>, <ul
 Non inserire assolutamente il markdown \`\`\`html all'inizio o alla fine, fornisci solo i tag.`;
 
             try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=" + apiKey.trim();
+                const res = await fetch(url, {
                     method: 'POST', 
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
@@ -216,11 +217,10 @@ Non inserire assolutamente il markdown \`\`\`html all'inizio o alla fine, fornis
                     })
                 });
                 
-                if (!res.ok) throw new Error("Errore Google API: Controlla la tua chiave o i permessi (Stato " + res.status + ")");
+                if (!res.ok) throw new Error("Errore Google API (Stato " + res.status + "). Controlla la chiave o i permessi.");
                 
                 const data = await res.json();
                 let finalHtml = data.candidates[0].content.parts[0].text;
-                // Pulisce l'eventuale markdown
                 finalHtml = finalHtml.replace(/```html/gi, '').replace(/```/g, '').trim();
                 resDiv.innerHTML = finalHtml;
                 
