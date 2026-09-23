@@ -200,9 +200,12 @@ FORMATTAZIONE OBBLIGATORIA: Usa ESCLUSIVAMENTE codice HTML pulito (tag <h3>, <ul
 Non inserire assolutamente il markdown \`\`\`html all'inizio o alla fine, fornisci solo i tag.`;
 
             try {{
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${{apiKey}}`, {{
+                // Usiamo il modello "latest" e una concatenazione sicura per l'API Key
+                const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=" + apiKey.trim();
+                const res = await fetch(url, {
                     method: 'POST', 
-                    headers: {{'Content-Type': 'application/json'}},
+                    headers: {'Content-Type': 'application/json'},
+
                     body: JSON.stringify({{
                         contents: [{{parts: [{{text: systemPrompt}}]}}]
                     }})
