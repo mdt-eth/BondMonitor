@@ -202,7 +202,7 @@ Non inserire assolutamente il markdown \`\`\`html all'inizio o alla fine, fornis
             try {{
                 // Usiamo il modello "latest" e una concatenazione sicura per l'API Key
                 const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=" + apiKey.trim();
-                const res = await fetch(url, {
+                const res = await fetch(url, {{
                     method: 'POST', 
                     headers: {'Content-Type': 'application/json'},
 
